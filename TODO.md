@@ -314,10 +314,236 @@ STATE_TRANSFER → (HTTP loop) → STATE_SETTINGS on exit
 
 ---
 
+---
+
+## Development & testing guide
+
+### Can you run this on your local machine?
+
+**Short answer:** **partly.**
+
+| What | On your Mac (local) | On ESP32 board |
+| --- | --- | --- |
+| Notes index, tags, meta, CSV rules | ✅ `cargo test` | Optional cross-check |
+| WAV header build / parse | ✅ `cargo test` | ✅ record a real file |
+| Battery % from voltage | ✅ `cargo test` | ✅ compare to serial logs |
+| Button debounce / long / double logic | ✅ `cargo test` | ✅ press buttons |
+| App state machine transitions | ✅ `cargo test` | ✅ menu navigation |
+| Whisper response `"text"` parsing | ✅ `cargo test` | ✅ sync one note |
+| Portal HTML helpers (`html_escape`, export text) | ✅ `cargo test` | ✅ browser on LAN |
+| E-Ink, SPI, partial refresh | ❌ | ✅ |
+| SD_MMC mount, FAT32 write | ❌ (use host `temp/` mock)* | ✅ |
+| ES8311 record / playback | ❌ | ✅ |
+| Deep sleep / wake on GPIO | ❌ | ✅ |
+| WiFi, NTP, HTTPS Whisper upload | ❌** | ✅ |
+| HTTP transfer portal (`:80`) | ❌** | ✅ phone on same WiFi |
+
+\* Host tests use a `MockStorage` trait writing to a temp directory — same code paths as SD, no hardware.  
+\** You can run **integration tests on Mac** against a local mock HTTP server (see Phase 3), but the real portal and WiFi stack only run on the device.
+
+**You cannot** flash-less run the full firmware as a desktop app. Plan on:
+
+1. **Fast loop:** host `cargo test` for pure logic (seconds).
+2. **Truth loop:** flash + serial monitor + buttons/screen on the Waveshare board (minutes per change).
+
+---
+
+### Recommended repo layout for testability
+
+Split **host-testable** code from the ESP binary:
+
+```
+zoop/
+  core/                 # std Rust — runs on Mac, no esp-idf
+    src/
+      storage/          # index, tags, meta (trait-based I/O)
+      wav.rs
+      battery.rs
+      state.rs
+      whisper_parse.rs
+      portal_fmt.rs
+  firmware/             # ESP32-S3 binary only
+    src/
+      main.rs
+      board/ display/ audio/ network/ ...
+```
+
+- `core` crate: `cargo test` on Mac after every logic change.
+- `firmware` crate: `cargo build` / `cargo espflash` when touching hardware.
+
+Until `firmware/` exists, validate behavior with **Track A** (C reference below).
+
+---
+
+### One-time dev environment (macOS)
+
+#### Track A — Reference C firmware (`pala_note/`) — use **now**
+
+Works today without the Rust port. Requires the **physical board** + USB-C + microSD.
+
+1. Install [Arduino IDE 2.x](https://www.arduino.cc/en/software) or use PlatformIO.
+2. Add ESP32 board support: **Boards Manager** → `esp32` by Espressif (3.x).
+3. Select board: **ESP32S3 Dev Module** (or Waveshare ESP32-S3-ePaper-1.54 if listed).
+4. Copy `pala_note/secrets.h` and set `WIFI_SSID`, `WIFI_PASS`, `OPENAI_KEY`.
+5. Format microSD as **FAT32**, insert in board.
+6. Open `pala_note/pala_note.ino` → **Upload**.
+7. **Serial Monitor** @ `115200` baud — expect `=== Pala Note v1.0 ===` and `[SD] N notes`.
+
+```bash
+# Optional: monitor from CLI (if arduino-cli or espflash installed)
+# ls /dev/cu.usb*   # find port, e.g. /dev/cu.usbmodem14101
+screen /dev/cu.usbmodem14101 115200
+```
+
+**Smoke test (5 min):** hold REC → record → pick tag → Menu → Notes → play back.
+
+#### Track B — Rust firmware (`firmware/`) — after Phase 0 scaffold
+
+1. Install dependencies:
+
+```bash
+# Rust (if needed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# esp-rs toolchain
+cargo install espup espflash
+espup install
+# Every new terminal session:
+. ~/export-esp.sh   # or path shown by espup
+```
+
+2. Clone/create `firmware/` per Phase 0; copy `secrets.example.toml` → `secrets.toml`.
+3. Build & flash:
+
+```bash
+cd firmware
+cargo build
+cargo espflash flash --monitor
+```
+
+4. Serial output should match **M0**: `=== Zoop v1.0 ===`.
+
+**Host tests (no board):**
+
+```bash
+cd core
+cargo test
+cargo test -- --nocapture   # see println! in tests
+```
+
+---
+
+### Per-phase: run & verify
+
+#### Phase 0 — Scaffold
+
+| Step | Where | Command / action | Pass criteria |
+| --- | --- | --- | --- |
+| Host tests compile | Mac | `cd core && cargo test` | 0 failures (even if empty at first) |
+| ESP target builds | Mac | `cd firmware && cargo build` | Builds for `xtensa-esp32s3-espidf` |
+| Flash boot log | Board | `cargo espflash flash --monitor` | UART: `=== Zoop v1.0 ===` |
+| CI | Mac / GitHub | `cargo check` in CI | Green on push |
+
+#### Phase 1 — BSP (board bring-up)
+
+Most of Phase 1 is **board-only**. Do one subsystem per flash cycle; watch serial logs.
+
+| Subsystem | Local prep | On-board test | Pass criteria |
+| --- | --- | --- | --- |
+| Power rails | — | Power on, serial log rail order | No brown-out; E-Ink powers up |
+| Display | Export framebuffer to PNG in host test (optional) | Flash test pattern | Black/white + text visible |
+| I2C / RTC | Mock I2C in `core` tests | Serial: RTC ISO string | `rtc set` on device info |
+| SD | `MockStorage` write/read in `core` | Insert FAT32 card | No `SD ERR`; `/notes` created |
+| Audio | WAV round-trip test in `core` | Record 3 s, play back | Hear audio; `note_001.wav` on SD |
+| Buttons | Unit-test `read_button_event` timings | Press REC/PWR | Serial logs correct event |
+| Battery | `cargo test battery_percent` | Compare % to serial | Within ~10% of multimeter |
+| Sleep | — | Wait 2 min idle | Ultra-sleep screen; wake on REC |
+
+**M1 sign-off:** 5 s recording on SD + playback + battery % on idle screen.
+
+#### Phase 2 — Core app (offline)
+
+| Feature | Local (`core`) | On-board | Pass criteria |
+| --- | --- | --- | --- |
+| Index / tags | `cargo test` all `notes::*` | Record 3 notes, different tags | `index.csv` + `tags.txt` correct |
+| Tag rules | test delete → Untagged | Delete tag in portal later | Notes moved, not deleted |
+| UI screens | Snapshot PNG from framebuffer bytes (optional host) | Navigate all menus | Each screen matches pala_note flow |
+| Sounds | — | Toggle Sounds in settings | Beeps on/off |
+| Delete note | test `delete_note` | Long-press delete in detail | `.wav/.txt/.meta` gone |
+
+**M2 sign-off:** Full offline loop with **WiFi off** — record → tag → list → detail → play → delete.
+
+#### Phase 3 — Connectivity & AI
+
+| Feature | Local (Mac) | On-board | Pass criteria |
+| --- | --- | --- | --- |
+| Whisper parse | `cargo test whisper_parse` | — | Sample JSON → text |
+| Portal HTML | `cargo test portal_*` | — | Escape, export truncation |
+| HTTP routes | Mock server test with `reqwest` against handler fns | — | 200 on `/`, `/api/notes` |
+| WiFi connect | — | Menu → Sync | `showWifiConnecting` → connected |
+| NTP | — | After WiFi | `rtc set` on device info |
+| Whisper upload | — | Sync with 1 untranscribed note | `note_NNN.txt` created |
+| Transfer portal | — | Settings → Transfer | Phone opens `http://<ip>/` |
+| Portal CRUD | `curl` from Mac on same LAN | Add/delete tag via `/tags` | Reflected after device `loadTags()` |
+
+**Local portal test from Mac (board in Transfer mode):**
+
+```bash
+# Replace with IP shown on device screen
+IP=192.168.1.42
+curl -s "http://$IP/api/notes" | jq .
+curl -s "http://$IP/export.txt" | head
+open "http://$IP/"   # browser
+```
+
+**M3 sign-off:** One Whisper transcription + phone browser downloads WAV/TXT.
+
+#### Phase 4 — Polish & release
+
+| Item | Local | On-board | Pass criteria |
+| --- | --- | --- | --- |
+| Ultra-sleep after tag | — | Save tag after record | Device sleeps |
+| Battery warning | test thresholds | Drain battery or mock ADC | Warning at ≤15% |
+| Enclosure fit | — | Physical | Battery + board fit PETG case |
+| 10× record stress | — | 10 consecutive recordings | No SD corruption |
+
+**M4 sign-off:** Feature checklist table below — all rows checked.
+
+---
+
+### Daily dev workflow (suggested)
+
+```text
+1. Change logic in core/          → cargo test          (Mac, ~5 s)
+2. Wire into firmware/            → cargo build         (Mac, ~30–120 s)
+3. Flash                            → cargo espflash flash --monitor
+4. Exercise one milestone scenario  → buttons + serial + phone (if network)
+5. If regression in logic           → add a core/ unit test first, then fix
+```
+
+**When stuck:** compare behavior to **Track A** (`pala_note/` on same board) — if C works but Rust doesn't, it's a port bug; if both fail, it's hardware/wiring/SD.
+
+---
+
+### Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| `SD ERR` on boot | FAT32 formatted? Card seated? Try 32 GB A2 card |
+| `NO WIFI` | `secrets.toml` / `secrets.h` SSID/password; 2.4 GHz network |
+| `REC FAIL` | SD full or write protected; serial log `[Rec]` path |
+| Flash fails | USB data cable; hold BOOT if needed; correct `/dev/cu.usb*` port |
+| `cargo build` fails on Mac | Run `. ~/export-esp.sh`; espup installed for esp32s3 |
+| Portal unreachable | Phone on same LAN; device IP on screen; firewall |
+| Whisper empty | API key valid; serial `[Whisper]` line; WAV > 1 KB |
+
+---
+
 ## Phase 0 — Project scaffold
 
 > Stack is **locked** — see [Locked tech stack & framework decisions](#locked-tech-stack--framework-decisions). Do not add Slint, LVGL, egui, tokio, or SPA deps in this phase.
 
+- [ ] Create `core/` host crate + `firmware/` ESP crate (see [testability layout](#recommended-repo-layout-for-testability))
 - [ ] Create `firmware/` Cargo workspace targeting `xtensa-esp32s3-espidf`
 - [ ] Add `rust-toolchain.toml` + document `espup install` / `source export-esp.sh`
 - [ ] `board/config.rs` — pins, timing, paths (table above)
@@ -512,51 +738,31 @@ Implement routes from `setupTransferServer()`:
 ## Suggested crate layout
 
 ```
-firmware/
-  Cargo.toml
-  rust-toolchain.toml
-  sdkconfig.defaults
-  secrets.example.toml
-  src/
-    main.rs              # setup, loop, state dispatch
-    board/
-      mod.rs
-      config.rs          # pins, timing
-      power.rs
-      pins.rs
-    display/
-      mod.rs
-      epaper.rs
-      draw.rs            # primitives, fonts
-      ui.rs              # screens
-    audio/
-      mod.rs
-      es8311.rs
-      wav.rs             # header read/write
-    storage/
-      mod.rs
-      sd.rs
-      notes.rs           # index, tags, meta
-    input/
-      mod.rs
-      buttons.rs
-    power/
-      mod.rs
+zoop/
+  core/                      # host-runnable — cargo test on Mac
+    Cargo.toml
+    src/
+      lib.rs
+      storage/               # index, tags, meta (trait I/O)
+      wav.rs
       battery.rs
-      sleep.rs
-    time/
-      mod.rs
-      rtc.rs
-      ntp.rs
-    network/
-      mod.rs
-      wifi.rs
-      whisper.rs
-      portal.rs
-    app/
-      mod.rs
-      state.rs           # AppState enum + transitions
-      sounds.rs
+      state.rs
+      whisper_parse.rs
+      portal_fmt.rs
+  firmware/                  # ESP32-S3 binary
+    Cargo.toml
+    rust-toolchain.toml
+    sdkconfig.defaults
+    secrets.example.toml
+    src/
+      main.rs
+      board/
+      display/
+      audio/
+      storage/               # SD adapter impl for core traits
+      network/
+      app/
+  pala_note/                 # C reference — flash today for HIL baseline
 ```
 
 ---
@@ -586,17 +792,18 @@ firmware/
 
 ## Testing plan
 
-| Layer | How |
-| --- | --- |
-| Unit | `storage/notes.rs` parse/write CSV, tag rules — host `cargo test` |
-| Unit | WAV header builder — host test |
-| Unit | `batteryPercentFromVoltage` curve — host test |
-| HIL | UART log milestones M0–M4 on real board |
-| HIL | SD pull-out recovery (graceful error screen) |
-| HIL | 2 min idle → sleep → wake gesture |
-| HIL | Portal from phone on same LAN |
-| Manual | 10 consecutive recordings without SD corruption |
-| Manual | Sync 5 notes Whisper end-to-end |
+> Full run/flash instructions: [Development & testing guide](#development--testing-guide).
+
+| Layer | Where | How |
+| --- | --- | --- |
+| Unit | **Mac** — `core/` | `cargo test` — storage, WAV, battery, state, whisper parse, portal fmt |
+| Integration | **Mac** — mock HTTP | Test portal handler functions against local test server |
+| Build | **Mac** | `cargo build` / `cargo check` for `firmware/` (ESP target) |
+| HIL | **Board** | `cargo espflash flash --monitor` — milestones M0–M4 |
+| HIL | **Board** | SD pull-out → `SD ERR`; 2 min idle → ultra-sleep |
+| HIL | **Board + phone** | Transfer mode portal on LAN (`curl`, browser) |
+| Reference | **Board** | Flash `pala_note/` C firmware to compare behavior |
+| Manual | **Board** | 10 consecutive recordings; sync 5 notes Whisper E2E |
 
 ---
 
