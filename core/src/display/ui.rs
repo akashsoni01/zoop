@@ -2,7 +2,7 @@
 
 use crate::display::draw::{
     draw_battery_ring, draw_header, draw_hints, draw_str, draw_str_centered, fill_circle,
-    fill_rect, stroke_circle, text_width, BLACK, BYTES, HEIGHT, WHITE, WIDTH,
+    fill_rect, stroke_circle, text_width, BLACK, HEIGHT, WHITE, WIDTH,
 };
 use crate::state::AppState;
 
@@ -73,7 +73,7 @@ impl UiContext<'_> {
             AppState::NoteDetail => self.show_note_detail(),
             AppState::DeleteConfirm => self.show_delete_confirm(),
             AppState::Transfer => self.show_transfer(),
-            AppState::Error => self.show_error(),
+            AppState::Error => self.show_error_screen(self.error_msg),
         }
     }
 
@@ -282,9 +282,10 @@ impl UiContext<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::display::draw::get_pixel;
+    use crate::display::draw::{get_pixel, BYTES};
+    use crate::state::AppState;
 
-    fn ctx(buf: &mut [u8]) -> UiContext<'_> {
+    fn ctx<'a>(buf: &'a mut [u8], tags: &'a [String], detail_lines: &'a [String]) -> UiContext<'a> {
         UiContext {
             buf,
             battery_pct: Some(80),
@@ -293,12 +294,12 @@ mod tests {
             menu_index: 0,
             settings_index: 0,
             tag_index: 0,
-            tags: &["Work".into(), "Idea".into()],
+            tags,
             list_filter: "All",
             list_scroll: 0,
             detail_num: 1,
             detail_tag: "Work",
-            detail_lines: &["Hello".into()],
+            detail_lines,
             detail_page: 0,
             error_msg: "SD ERR",
             device_rtc: "2026-07-11 12:00",
@@ -312,7 +313,9 @@ mod tests {
     #[test]
     fn idle_screen_renders_header_region() {
         let mut buf = vec![0xFF; BYTES];
-        let mut ui = ctx(&mut buf);
+        let tags = vec!["Work".into(), "Idea".into()];
+        let lines = vec!["Hello".into()];
+        let mut ui = ctx(&mut buf, &tags, &lines);
         assert_eq!(ui.render(AppState::Idle), ScreenId::Idle);
         assert_eq!(get_pixel(&buf, 100, 145), BLACK);
     }
@@ -320,7 +323,9 @@ mod tests {
     #[test]
     fn menu_highlights_selected_row() {
         let mut buf = vec![0xFF; BYTES];
-        let mut ui = ctx(&mut buf);
+        let tags = vec!["Work".into()];
+        let lines = vec!["Hello".into()];
+        let mut ui = ctx(&mut buf, &tags, &lines);
         ui.menu_index = 1;
         assert_eq!(ui.render(AppState::Menu), ScreenId::Menu);
         assert_eq!(get_pixel(&buf, 20, 66), WHITE);
@@ -329,7 +334,9 @@ mod tests {
     #[test]
     fn error_screen_sets_message() {
         let mut buf = vec![0xFF; BYTES];
-        let mut ui = ctx(&mut buf);
+        let tags = vec!["Work".into()];
+        let lines = vec!["Hello".into()];
+        let mut ui = ctx(&mut buf, &tags, &lines);
         assert_eq!(ui.show_error_screen("SD ERR"), ScreenId::Error);
         assert_eq!(get_pixel(&buf, 100, 90), BLACK);
     }
@@ -338,8 +345,10 @@ mod tests {
     fn framebuffer_hash_stable_for_idle() {
         let mut a = vec![0xFF; BYTES];
         let mut b = vec![0xFF; BYTES];
-        ctx(&mut a).render(AppState::Idle);
-        ctx(&mut b).render(AppState::Idle);
+        let tags = vec!["Work".into(), "Idea".into()];
+        let lines = vec!["Hello".into()];
+        ctx(&mut a, &tags, &lines).render(AppState::Idle);
+        ctx(&mut b, &tags, &lines).render(AppState::Idle);
         assert_eq!(a, b);
     }
 }

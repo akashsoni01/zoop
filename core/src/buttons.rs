@@ -47,13 +47,13 @@ impl ButtonEngine {
         e
     }
 
-    fn debounced_down(&self, pressed: bool, down_since: &mut Option<u64>, now_ms: u64) -> bool {
+    fn debounced_down(down_since: &mut Option<u64>, pressed: bool, now_ms: u64, debounce_ms: u64) -> bool {
         if pressed {
             if down_since.is_none() {
                 *down_since = Some(now_ms);
             }
             down_since
-                .map(|t| now_ms.saturating_sub(t) >= self.debounce_ms)
+                .map(|t| now_ms.saturating_sub(t) >= debounce_ms)
                 .unwrap_or(false)
         } else {
             *down_since = None;
@@ -120,7 +120,7 @@ impl ButtonEngine {
         if now_ms.saturating_sub(release) > self.double_ms {
             return ButtonEvent::None;
         }
-        if pressed && self.debounced_down(true, &mut self.rec_down_since, now_ms) {
+        if pressed && Self::debounced_down(&mut self.rec_down_since, true, now_ms, self.debounce_ms) {
             self.rec_waiting_double = false;
             self.rec_release_at = None;
             self.rec_down_since = None;
@@ -138,7 +138,7 @@ impl ButtonEngine {
         if !self.pwr_ready {
             return ButtonEvent::None;
         }
-        if self.debounced_down(pressed, &mut self.pwr_down_since, now_ms) {
+        if Self::debounced_down(&mut self.pwr_down_since, pressed, now_ms, self.debounce_ms) {
             self.pwr_ready = false;
             return ButtonEvent::Single;
         }

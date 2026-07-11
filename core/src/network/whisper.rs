@@ -142,13 +142,10 @@ mod tests {
 
     #[test]
     fn pending_lists_untranscribed_only() {
+        let storage = MockStorage::new().unwrap();
         let mut index = IndexStore::new();
-        add_to_index(&MockStorage::new().unwrap(), &mut index, 1, "A", false).unwrap();
-        index.entries.push(crate::storage::NoteEntry {
-            num: 2,
-            tag: "B".into(),
-            has_text: true,
-        });
+        add_to_index(&storage, &mut index, 1, "A", false).unwrap();
+        add_to_index(&storage, &mut index, 2, "B", true).unwrap();
         assert_eq!(pending_transcription(&index), vec![1]);
     }
 }
