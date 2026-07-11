@@ -40,19 +40,129 @@ Port of the C/Arduino [`pala_note`](./pala_note/) firmware to **Rust** on the Wa
 
 ---
 
-## Tech stack (decide in Phase 0)
+## Locked tech stack & framework decisions
 
-| Layer | Preferred | Alternative | Notes |
+> **Read this before coding.** Choices below are **locked for v1** to avoid re-litigating frameworks during implementation (saves tokens and time). Do not swap stacks mid-port unless a milestone is blocked and the blocker is logged in this file.
+
+### Quick reference — what we use
+
+| Layer | **Use (v1)** | Crate / module |
+| --- | --- | --- |
+| Firmware base | ESP-IDF via Rust | `esp-idf-svc`, `esp-idf-hal`, `esp-idf-sys` |
+| Build / flash | esp-rs toolchain | `espup`, `cargo`, `idf.py` / `espflash` |
+| On-device UI | **Custom immediate-mode** (no UI framework) | `display/epaper.rs`, `draw.rs`, `ui.rs` |
+| Font rendering | Bitmap glyphs (port from C) | `draw.rs` + optional `embedded-graphics` **fonts only** |
+| Async / tasks | ESP-IDF FreeRTOS tasks | `std::thread` + `esp-idf-svc` timers; **not** full async UI |
+| SD / FAT | ESP-IDF VFS + FAT | `esp-idf-svc` SDMMC mount at `/sdcard` |
+| HTTP (portal) | ESP-IDF HTTP server | `esp-idf-svc::http::server` |
+| HTTPS (Whisper) | ESP-TLS | `esp-idf-svc` + cert bundle; insecure only for local dev |
+| WiFi | ESP-IDF WiFi STA | `esp-idf-svc::wifi` |
+| Audio codec | ES8311 via I2S | FFI → `esp_codec_dev` first; pure Rust later |
+| Web portal UI | Hand-written HTML/CSS strings | `network/portal.rs` (port `portalCss()` from C) |
+| Secrets | TOML / env at build time | `secrets.toml` (gitignored) |
+| State machine | Rust `enum` + `match` | `app/state.rs` |
+
+---
+
+### On-device UI — framework matrix (do **not** use these for v1)
+
+| Framework | Verdict | Why not (E-Ink + 2 buttons + deep sleep) |
+| --- | --- | --- |
+| **Slint** | ❌ **No** | MCU backend targets LCD/GPU compositors; no native 1-bit E-Paper partial refresh; adds `.slint` compiler + runtime RAM; overkill for ~15 static screens |
+| **LVGL** | ❌ **No** | Assumes color LCD + touch + 10+ Hz tick; ghosting/burn on E-Ink; `LVGL_*` in `config.h` is **dead code** — reference uses `draw.cpp` |
+| **egui** | ❌ **No** | Immediate-mode but needs linear framebuffer + frequent full redraws; poor fit for 15–20 s E-Ink refresh |
+| **iced** | ❌ **No** | Desktop/GPU-oriented; not built for monochrome E-Ink or 2-button navigation |
+| **Ratatui** | ❌ **No** | Terminal UI — no E-Paper display backend |
+| **embedded-graphics** | ⚠️ **Optional helper only** | Use for `MonoFont` / primitives if it simplifies `draw.rs`; **not** as app UI layer — screens stay explicit `show*()` functions |
+| **Custom draw (pala_note style)** | ✅ **Yes** | Matches reference; minimal RAM; full control of partial refresh; proven on this board |
+
+**On-device UI architecture (locked):**
+
+```
+Button events → app/state.rs → display/ui.rs::show*()
+                                      ↓
+                               display/draw.rs (primitives + fonts)
+                                      ↓
+                               display/epaper.rs (framebuffer → SPI partial refresh)
+```
+
+- One `show*()` function per screen (port `ui.cpp` 1:1).
+- No widget tree, no layout engine, no `.slint` / `.xml` UI files.
+- Redraw only when state changes or ticker scroll fires — never every frame.
+
+---
+
+### Other layers — framework matrix
+
+| Area | ❌ Do not use (v1) | ✅ Use instead | Reason |
 | --- | --- | --- | --- |
-| RTOS / framework | `esp-idf-svc` + `esp-idf-hal` | Embassy ESP32 | Match Waveshare ESP-IDF examples first |
-| Build | `espup` + `cargo` + `idf.py` | PlatformIO wrapper | Document exact toolchain versions |
-| SD / FAT | `esp-idf-svc::SdCard` or `fatfs` | — | 1-bit SDIO, mount at `/sdcard` |
-| HTTP server | `esp-idf-svc::http::server` | `embedded-svc` | Portal + file streaming |
-| TLS | `esp-tls` with cert bundle | Insecure dev only | Reference uses `setInsecure()` — pin cert for prod |
-| Display | Custom 200×200 mono framebuffer | Port `epaper_driver_bsp` | Partial refresh after base image |
-| Audio | I2S + ES8311 driver | Wrap `esp_codec_dev` via FFI initially | I2S pins in `board_cfg.h` |
+| RTOS / runtime | Embassy-only rewrite, bare-metal `no_std` | `esp-idf-svc` on FreeRTOS | Waveshare drivers + `esp_codec_dev` are IDF-native |
+| Async everywhere | `tokio`, `async-std`, `embassy_executor` for whole app | Blocking I/O in dedicated tasks; HTTP `handleClient()` in main loop | Matches C `loop()` model; fewer lifetime/async bugs on ESP32 |
+| HTTP server | `axum`, `warp`, `hyper` standalone | `esp-idf-svc::http::server` | Built for embedded; reference uses `WebServer` |
+| Web portal frontend | React, Vue, HTMX, Slint for browser | Static HTML strings in Rust (port C portal) | Portal is transfer tool, not a SPA — keep zero JS deps except tiny date script |
+| TLS | `rustls` alone without ESP integration | `esp-tls` / IDF mbedTLS | Hardware + memory constraints on S3 |
+| SD filesystem | `littlefs` on SD, custom block driver | FAT32 via ESP-IDF VFS | Parity with pala_note; user formats card on PC |
+| JSON (Whisper response) | `serde` + full JSON tree | Minimal string parse for `"text":"..."` (port C) | Response is tiny; avoid alloc-heavy parsing |
+| Logging | `tracing` subscriber ecosystem | `log` + `esp-idf-svc::log` | Simple UART logs like `Serial.printf` |
+| Testing UI | Snapshot tests via Slint/LVGL sim | Host `cargo test` for `storage/`, `draw` math, WAV header; HIL on board | UI verified by milestone screenshots / HIL |
 
-**Recommendation:** Start with `esp-idf-svc` for fastest parity with `pala_note`, then peel off pure-Rust drivers where stable.
+---
+
+### `embedded-graphics` — allowed scope (if adopted)
+
+Only these sub-features; nothing else:
+
+- [ ] `mono_font` — render static labels (optional replacement for Adafruit GFX font tables)
+- [ ] `pixelcolor::BinaryColor` — type-safe 1-bit color
+- [ ] `primitives` — line, circle, rect helpers behind `draw.rs` wrappers
+
+**Forbidden:** `embedded-graphics` UI crates, `egui-miniquad`, or building a scene graph on top of it.
+
+---
+
+### Dependency policy (keep compile + context lean)
+
+| Rule | Detail |
+| --- | --- |
+| Prefer IDF builtins | SD, WiFi, HTTP, TLS, sleep, ADC — use `esp-idf-svc` wrappers first |
+| No new UI crate without ADR | Any UI framework change requires a short note at bottom of this file |
+| Pin versions in `Cargo.toml` | Document in README; avoid `*` deps |
+| FFI boundary | Single `audio/ffi.rs` for `esp_codec_dev`; don't sprinkle `extern "C"` |
+| PSRAM buffers | Audio record/playback buffers allocated once at init — no per-frame alloc |
+| Portal HTML | Inline `const` CSS string (port `portalCss()`); no asset bundler |
+
+---
+
+### Agent / developer prompt (paste when starting a task)
+
+```
+Zoop firmware constraints (do not deviate):
+- ESP32-S3 + esp-idf-svc + esp-idf-hal
+- On-device UI: custom immediate-mode only (display/ui.rs + draw.rs + epaper.rs). NO Slint, LVGL, egui, iced.
+- Web portal: HTML strings in network/portal.rs, esp-idf HTTP server. NO React/SPA.
+- Audio: esp_codec_dev FFI first. Storage: FAT32 /notes on SD. State: app/state.rs enum.
+- Port pala_note/ behavior 1:1 before adding abstractions.
+```
+
+---
+
+### When revisiting a decision is allowed
+
+Only if **all** are true:
+
+1. Milestone M1–M4 blocked for **>1 day** by the chosen stack
+2. Blocker written under **Decision log** below with repro steps
+3. Alternative still meets: E-Ink partial refresh, deep sleep, <512 KB UI RAM budget, 2-button UX
+
+Otherwise: **stay on the locked stack.**
+
+### Decision log
+
+| Date | Decision | Rationale |
+| --- | --- | --- |
+| 2026-07-11 | No Slint / LVGL / egui for on-device UI | pala_note uses hand-drawn screens; E-Ink needs explicit refresh control |
+| 2026-07-11 | `esp-idf-svc` over Embassy-only | Fastest path to ES8311 + Waveshare e-Paper drivers |
+| 2026-07-11 | Portal stays inline HTML | Matches C; no frontend build step |
 
 ---
 
@@ -206,6 +316,8 @@ STATE_TRANSFER → (HTTP loop) → STATE_SETTINGS on exit
 
 ## Phase 0 — Project scaffold
 
+> Stack is **locked** — see [Locked tech stack & framework decisions](#locked-tech-stack--framework-decisions). Do not add Slint, LVGL, egui, tokio, or SPA deps in this phase.
+
 - [ ] Create `firmware/` Cargo workspace targeting `xtensa-esp32s3-espidf`
 - [ ] Add `rust-toolchain.toml` + document `espup install` / `source export-esp.sh`
 - [ ] `board/config.rs` — pins, timing, paths (table above)
@@ -286,7 +398,7 @@ STATE_TRANSFER → (HTTP loop) → STATE_SETTINGS on exit
 - [ ] `writeNoteMeta` with `created_utc`, `tag`, `synced`
 - [ ] `noteCreatedDeviceLabel` with `LOCAL_TIME_OFFSET_MIN`
 
-### 2.3 UI screens (port `ui.cpp`)
+### 2.3 UI screens (port `ui.cpp` — custom draw only, no Slint/LVGL)
 
 - [ ] `showIdle` — logo, battery ring, hints
 - [ ] `showRecording`, `showSaved`, `showTagSelect`
