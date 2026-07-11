@@ -1,0 +1,19 @@
+# Rust
+target/
+**/*.rs.bk
+
+# ESP-IDF build artifacts
+sdkconfig
+sdkconfig.old
+.embuild/
+
+# Secrets — never commit
+secrets.toml
+firmware/secrets.toml
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*~

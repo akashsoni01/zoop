@@ -1,0 +1,22 @@
+[package]
+name = "zoop-firmware"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "ESP32-S3 firmware for Zoop voice notepad"
+
+[[bin]]
+name = "zoop-firmware"
+path = "src/main.rs"
+
+[dependencies]
+log = "0.4"
+esp-idf-svc = { version = "0.51", default-features = false, features = ["std"] }
+zoop-core = { path = "../core" }
+
+[build-dependencies]
+embuild = "0.33"
+
+[package.metadata.esp-idf-sys]
+esp_idf_version = "v5.2.2"
+esp_idf_sdkconfig_defaults = ["sdkconfig.defaults"]
