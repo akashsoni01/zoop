@@ -18,7 +18,7 @@ Port of the C/Arduino [`pala_note`](./pala_note/) firmware to **Rust** on the Wa
 - [ ] Deep sleep mode for improved battery life
 - [ ] Minimal E-Ink interface optimized for low power usage
 - [ ] WiFi syncing support
-- [ ] AI transcription using the OpenAI Whisper API
+- [ ] AI transcription — provider-selectable: Cursor API (dev) or OpenAI Whisper (prod); see `core/src/transcribe.rs`
 - [ ] Local web interface for accessing recordings and notes
 - [ ] Audio playback directly on the device
 - [ ] Transfer mode for downloading recordings through the browser
@@ -547,7 +547,7 @@ open "http://$IP/"   # browser
 - [x] Create `firmware/` Cargo workspace targeting `xtensa-esp32s3-espidf`
 - [x] Add `rust-toolchain.toml` + document `espup install` / `source export-esp.sh`
 - [x] `board/config.rs` — pins, timing, paths (table above)
-- [x] `secrets.example.toml` with `wifi_ssid`, `wifi_pass`, `openai_key`, `local_time_offset_min`
+- [x] `secrets.example.toml` with `wifi_ssid`, `wifi_pass`, `transcription_provider`, `cursor_api_key`, `openai_key`, `local_time_offset_min`
 - [x] `.gitignore` secrets + `target/` + `sdkconfig`
 - [x] `cargo fmt`, `clippy` config; CI `cargo check` on push
 - [x] Logging via `esp-idf-svc::log` (replace `Serial.printf`)
@@ -662,15 +662,18 @@ open "http://$IP/"   # browser
 - [ ] Write RTC chip after successful sync
 - [ ] `timeReady` flag gates created timestamps
 
-### 3.3 Whisper API
+### 3.3 Whisper / transcription API
 
-- [ ] `POST https://api.openai.com/v1/audio/transcriptions`
+Provider from `secrets.toml` (`transcription_provider`: `cursor` dev, `openai` prod). Shared logic in `core/src/transcribe.rs`; firmware uses build-time `board/secrets.rs`.
+
+- [ ] `POST https://{host}/v1/audio/transcriptions` — default `api.cursor.com` (dev) or `api.openai.com` (prod)
 - [ ] Multipart form: `model=whisper-1`, file=`note.wav`
 - [ ] Stream WAV from SD in 4 KB chunks; 90 s timeout
 - [ ] Parse JSON `"text"` field → write `note_NNN.txt`
 - [ ] `updateIndexHasText(num)`; 3 retries with 3 s delay
 - [ ] `transcribeAll()` — progress UI `showTranscribing(done, pending)`
-- [ ] **Security:** move API key to secrets; plan cert pinning (reference TODO)
+- [ ] **Security:** API keys only in gitignored `secrets.toml`; plan cert pinning (reference TODO)
+- [ ] Optional `transcription_base_host` for OpenAI-compatible local STT proxy
 
 ### 3.4 Local web portal (port 80)
 

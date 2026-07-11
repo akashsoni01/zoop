@@ -7,6 +7,7 @@ pub mod portal_fmt;
 pub mod state;
 pub mod storage;
 pub mod wav;
+pub mod transcribe;
 pub mod whisper_parse;
 
 pub use battery::{battery_percent_from_voltage, BatteryCurve};
@@ -20,4 +21,8 @@ pub use storage::{
     FileStorage, IndexStore, MockStorage, NoteEntry, TagStore,
 };
 pub use wav::{parse_wav_header, WavHeader, SAMPLE_RATE};
+pub use transcribe::{
+    parse_transcription_response, TranscribeError, TranscriptionConfig, TranscriptionProvider,
+    CURSOR_HOST, DEFAULT_BOUNDARY, DEFAULT_MODEL, OPENAI_HOST, TRANSCRIPTION_PATH,
+};
 pub use whisper_parse::parse_whisper_text;

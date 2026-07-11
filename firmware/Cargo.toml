@@ -16,6 +16,8 @@ zoop-core = { path = "../core" }
 
 [build-dependencies]
 embuild = "0.33"
+toml = "0.8"
+zoop-core = { path = "../core" }
 
 [package.metadata.esp-idf-sys]
 esp_idf_version = "v5.2.2"

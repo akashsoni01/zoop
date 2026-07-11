@@ -373,7 +373,7 @@ zoop/
 
 ### Host tests (no board required)
 
-Pure logic — storage, WAV headers, battery curve, state machine, Whisper parse, portal helpers:
+Pure logic — storage, WAV headers, battery curve, state machine, Whisper parse, transcription config, portal helpers:
 
 ```bash
 cd core
@@ -401,10 +401,35 @@ espup install
 
 ```bash
 cd firmware
-cp secrets.example.toml secrets.toml   # edit WiFi + OpenAI key — never commit secrets.toml
+cp secrets.example.toml secrets.toml   # edit WiFi + transcription keys — never commit secrets.toml
 cargo build
 cargo espflash flash --monitor
 ```
+
+#### `secrets.toml` (transcription)
+
+Copy `secrets.example.toml` to `secrets.toml` (gitignored). For **development**, use your Cursor API key instead of OpenAI:
+
+```toml
+transcription_provider = "cursor"
+cursor_api_key = "crsr_..."          # cursor.com/dashboard → API Keys
+openai_key = ""                      # optional in dev
+
+# Production:
+# transcription_provider = "openai"
+# openai_key = "sk-..."
+```
+
+| Provider | Default host | Endpoint | Auth |
+| --- | --- | --- | --- |
+| `cursor` (dev) | `api.cursor.com` | `POST /v1/audio/transcriptions` | `Authorization: Bearer crsr_...` |
+| `openai` (prod) | `api.openai.com` | `POST /v1/audio/transcriptions` | `Authorization: Bearer sk-...` |
+
+Multipart upload matches the pala_note Whisper flow: `model=whisper-1`, `file=note.wav`, parse JSON `"text"`.
+
+**Note:** As of mid-2026, `api.cursor.com` does not expose `/v1/audio/transcriptions` (returns 404). The firmware and `core/src/transcribe.rs` are wired for when Cursor adds it, or you can set `transcription_base_host` to an OpenAI-compatible STT proxy for local dev.
+
+**Security:** Never commit `secrets.toml`. If an API key was pasted in chat or shared elsewhere, rotate it in the [Cursor dashboard](https://cursor.com/dashboard) (API Keys) or OpenAI platform immediately.
 
 **M0 pass criteria:** UART shows `=== Zoop v1.0 ===` at 115200 baud.
 
