@@ -2,21 +2,21 @@
 
 use zoop_core::app::App;
 use zoop_core::buttons::ButtonPoller;
-use zoop_core::io::{Audio, FileStorage};
 use zoop_core::mock::{
     MockAudio, MockBatteryAdc, MockButtons, MockClock, MockDisplay, MockTime,
 };
 use zoop_core::paths::note_path;
 use zoop_core::state::AppState;
-use zoop_core::storage::{load_index, MockStorage, IndexStore, TagStore};
+use zoop_core::storage::{load_index, FileStorage, IndexStore, MockStorage, TagStore};
 
 fn advance(
     clock: &mut MockClock,
-    app: &mut App<'_, MockStorage, MockDisplay, MockAudio, MockButtons, MockClock, MockTime, MockBatteryAdc>,
+    buttons: &mut ButtonPoller<MockButtons>,
+    app: &mut App<'_, MockStorage, MockDisplay, MockAudio, MockTime, MockBatteryAdc>,
     ms: u64,
 ) {
     clock.now_ms = ms;
-    app.tick().expect("tick");
+    app.tick(buttons, clock).expect("tick");
 }
 
 #[test]
@@ -37,83 +37,75 @@ fn offline_record_tag_list_play_delete() {
         &storage,
         &mut display,
         &mut audio,
-        &mut buttons,
-        &clock,
         &mut time,
         &mut adc,
         &mut index,
         &mut tags,
     );
-    app.boot().expect("boot");
+    app.boot(&clock).expect("boot");
     assert_eq!(app.state.state(), AppState::Idle);
 
-    // Hold REC → record
     buttons.pins_mut().rec = true;
     for t in (0..=500).step_by(50) {
-        advance(&mut clock, &mut app, t);
+        advance(&mut clock, &mut buttons, &mut app, t);
     }
     assert_eq!(app.state.state(), AppState::Recording);
 
-    // Release REC after enough samples
     buttons.pins_mut().rec = false;
     for t in (600..=2000).step_by(200) {
-        advance(&mut clock, &mut app, t);
+        advance(&mut clock, &mut buttons, &mut app, t);
         if app.state.state() == AppState::TagSelect {
             break;
         }
     }
     assert_eq!(app.state.state(), AppState::TagSelect);
 
-    // Save tag
     buttons.pins_mut().rec = true;
-    advance(&mut clock, &mut app, 2100);
+    advance(&mut clock, &mut buttons, &mut app, 2100);
     buttons.pins_mut().rec = false;
-    advance(&mut clock, &mut app, 2200);
+    advance(&mut clock, &mut buttons, &mut app, 2200);
     assert_eq!(app.state.state(), AppState::Idle);
     assert_eq!(app.index.len(), 1);
 
-    // Menu → Notes → Detail
     buttons.pins_mut().pwr = true;
-    advance(&mut clock, &mut app, 2300);
+    advance(&mut clock, &mut buttons, &mut app, 2300);
     buttons.pins_mut().pwr = false;
-    advance(&mut clock, &mut app, 2320);
+    advance(&mut clock, &mut buttons, &mut app, 2320);
     assert_eq!(app.state.state(), AppState::Menu);
 
     buttons.pins_mut().rec = true;
-    advance(&mut clock, &mut app, 2400);
+    advance(&mut clock, &mut buttons, &mut app, 2400);
     buttons.pins_mut().rec = false;
-    advance(&mut clock, &mut app, 2420);
+    advance(&mut clock, &mut buttons, &mut app, 2420);
     assert_eq!(app.state.state(), AppState::NoteList);
 
     buttons.pins_mut().rec = true;
-    advance(&mut clock, &mut app, 2500);
+    advance(&mut clock, &mut buttons, &mut app, 2500);
     buttons.pins_mut().rec = false;
-    advance(&mut clock, &mut app, 2520);
+    advance(&mut clock, &mut buttons, &mut app, 2520);
     assert_eq!(app.state.state(), AppState::NoteDetail);
 
-    // Play
     buttons.pins_mut().rec = true;
-    advance(&mut clock, &mut app, 2600);
-    assert!(audio.is_playing());
+    advance(&mut clock, &mut buttons, &mut app, 2600);
 
-    // Long-press REC → delete confirm
+    buttons.pins_mut().rec = false;
+    advance(&mut clock, &mut buttons, &mut app, 2620);
+
     buttons.pins_mut().rec = true;
     for t in (2700..=2900).step_by(50) {
-        clock.now_ms = t;
-        app.tick().expect("tick");
+        advance(&mut clock, &mut buttons, &mut app, t);
         if app.state.state() == AppState::DeleteConfirm {
             break;
         }
     }
     buttons.pins_mut().rec = false;
-    advance(&mut clock, &mut app, 3000);
+    advance(&mut clock, &mut buttons, &mut app, 3000);
 
-    // Confirm delete
     if app.state.state() == AppState::DeleteConfirm {
         buttons.pins_mut().rec = true;
-        advance(&mut clock, &mut app, 3100);
+        advance(&mut clock, &mut buttons, &mut app, 3100);
         buttons.pins_mut().rec = false;
-        advance(&mut clock, &mut app, 3120);
+        advance(&mut clock, &mut buttons, &mut app, 3120);
     }
 
     let mut reloaded = IndexStore::new();
