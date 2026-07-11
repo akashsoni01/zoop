@@ -406,10 +406,10 @@ screen /dev/cu.usbmodem14101 115200
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # esp-rs toolchain
-cargo install espup espflash
+cargo install espup espflash cargo-espflash ldproxy
 espup install
 # Every new terminal session:
-. ~/export-esp.sh   # or path shown by espup
+. ~/export-esp.sh   # e.g. ~/export-esp.sh — path shown by espup
 ```
 
 2. Clone/create `firmware/` per Phase 0; copy `secrets.example.toml` → `secrets.toml`.

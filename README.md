@@ -391,10 +391,10 @@ Run after every change to `core/` (~seconds).
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # esp-rs toolchain for ESP32-S3 (Xtensa)
-cargo install espup espflash
+cargo install espup espflash cargo-espflash ldproxy
 espup install
-# Every new terminal session:
-. ~/export-esp.sh   # or the path shown by espup
+# Every new terminal session (sets LIBCLANG_PATH, Xtensa GCC, and ~/.cargo/bin):
+. ~/export-esp.sh   # e.g. /Users/you/export-esp.sh — path shown by espup
 ```
 
 **Build & flash:**
@@ -432,6 +432,20 @@ Multipart upload matches the pala_note Whisper flow: `model=whisper-1`, `file=no
 **Security:** Never commit `secrets.toml`. If an API key was pasted in chat or shared elsewhere, rotate it in the [Cursor dashboard](https://cursor.com/dashboard) (API Keys) or OpenAI platform immediately.
 
 **M0 pass criteria:** UART shows `=== Zoop v1.0 ===` at 115200 baud.
+
+If `cargo espflash` says **no such command `espflash`**, install the Cargo subcommand (the `espflash` binary alone is not enough):
+
+```bash
+cargo install cargo-espflash
+```
+
+If linking fails with **`linker ldproxy not found`**:
+
+```bash
+cargo install ldproxy
+```
+
+Verify tools: `which espflash ldproxy` and `cargo espflash --version`.
 
 If `cargo check` fails with `custom toolchain 'esp' ... is not installed`, run `espup install` and source `export-esp.sh` first.
 
