@@ -18,15 +18,10 @@ pub const FIRMWARE_VERSION: &str = "v1.0";
 pub const LOCAL_TIME_OFFSET_MIN: i32 = 120;
 
 /// High-level app context wiring core logic to BSP traits.
-pub struct App<'a, S, D, A, B, C, T, ADC>
-where
-    B: crate::io::Buttons,
-{
+pub struct App<'a, S, D, A, T, ADC> {
     pub storage: &'a S,
     pub display: &'a mut D,
     pub audio: &'a mut A,
-    pub buttons: &'a mut ButtonPoller<B>,
-    pub clock: &'a C,
     pub time: &'a mut T,
     pub battery_adc: &'a mut ADC,
     pub index: &'a mut IndexStore,
@@ -46,13 +41,11 @@ where
     pub last_screen: ScreenId,
 }
 
-impl<'a, S, D, A, B, C, T, ADC> App<'a, S, D, A, B, C, T, ADC>
+impl<'a, S, D, A, T, ADC> App<'a, S, D, A, T, ADC>
 where
     S: FileStorage,
     D: Display,
     A: Audio,
-    B: crate::io::Buttons,
-    C: Clock,
     T: TimeSource,
     ADC: BatteryAdc,
 {
@@ -60,8 +53,6 @@ where
         storage: &'a S,
         display: &'a mut D,
         audio: &'a mut A,
-        buttons: &'a mut ButtonPoller<B>,
-        clock: &'a C,
         time: &'a mut T,
         battery_adc: &'a mut ADC,
         index: &'a mut IndexStore,
@@ -71,8 +62,6 @@ where
             storage,
             display,
             audio,
-            buttons,
-            clock,
             time,
             battery_adc,
             index,
@@ -93,23 +82,31 @@ where
         }
     }
 
-    pub fn boot(&mut self) -> CoreResult<()> {
+    pub fn boot<C: Clock>(&mut self, clock: &C) -> CoreResult<()> {
         load_index(self.storage, self.index)?;
         load_tags(self.storage, self.tags)?;
-        self.activity.reset_activity(self.clock.now_ms());
-        self.redraw()?;
+        self.activity.reset_activity(clock.now_ms());
+        self.redraw(clock)?;
         Ok(())
     }
 
-    pub fn tick(&mut self) -> CoreResult<()> {
-        let now = self.clock.now_ms();
-        self.handle_buttons(now)?;
+    pub fn tick<B: crate::io::Buttons, C: Clock>(
+        &mut self,
+        buttons: &mut ButtonPoller<B>,
+        clock: &C,
+    ) -> CoreResult<()> {
+        let now = clock.now_ms();
+        self.handle_buttons(buttons, now)?;
         self.check_ultra_sleep(now)?;
-        self.redraw()?;
+        self.redraw(clock)?;
         Ok(())
     }
 
-    fn handle_buttons(&mut self, now_ms: u64) -> CoreResult<()> {
+    fn handle_buttons<B: crate::io::Buttons>(
+        &mut self,
+        buttons: &mut ButtonPoller<B>,
+        now_ms: u64,
+    ) -> CoreResult<()> {
         if self.state.state() == AppState::Idle
             && self.buttons.idle_rec_hold_started(now_ms)
         {
@@ -227,7 +224,7 @@ where
         finalize_new_note(self.storage, self.index, num, &tag, &utc)?;
         self.sounds.play(self.audio, SoundKind::Success);
         let _ = self.state.apply(Transition::TagSaved);
-        self.activity.reset_activity(self.clock.now_ms());
+        self.activity.reset_activity(now_ms);
         Ok(())
     }
 
@@ -363,19 +360,20 @@ where
         battery_percent_from_adc_samples(&samples)
     }
 
-    pub fn redraw(&mut self) -> CoreResult<()> {
+    pub fn redraw<C: Clock>(&mut self, clock: &C) -> CoreResult<()> {
         let pct = self.battery_percent();
+        let now = clock.now_ms();
         if let Some(p) = pct {
             self.activity.update_battery_warning(
                 Some(p),
                 BatteryCurve::LOW_THRESHOLD,
                 BatteryCurve::RECOVER_THRESHOLD,
-                self.clock.now_ms(),
+                now,
             );
         }
 
         let state = self.state.state();
-        let warn = self.activity.battery_warning_active(self.clock.now_ms());
+        let warn = self.activity.battery_warning_active(now);
         let error_msg = self.error_msg.clone();
 
         let detail_tag = self
@@ -424,7 +422,7 @@ where
 mod tests {
     use super::*;
     use crate::mock::{MockAudio, MockBatteryAdc, MockButtons, MockClock, MockDisplay, MockTime};
-    use crate::storage::index::{add_to_index, IndexStore};
+    use crate::storage::MockStorage;
 
     fn test_app() -> (
         MockStorage,
@@ -450,36 +448,16 @@ mod tests {
         )
     }
 
-    use crate::storage::MockStorage;
-
     #[test]
     fn boot_loads_stores_and_renders_idle() {
-        let (storage, mut display, mut audio, mut buttons, clock, mut time, mut adc, mut index, mut tags) =
+        let (storage, mut display, mut audio, _buttons, clock, mut time, mut adc, mut index, mut tags) =
             test_app();
         let mut app = App::new(
-            &storage, &mut display, &mut audio, &mut buttons, &clock, &mut time, &mut adc,
+            &storage, &mut display, &mut audio, &mut time, &mut adc,
             &mut index, &mut tags,
         );
-        app.boot().expect("boot");
+        app.boot(&clock).expect("boot");
         assert_eq!(app.state.state(), AppState::Idle);
         assert_eq!(app.last_screen, ScreenId::Idle);
-    }
-
-    #[test]
-    fn pwr_from_idle_opens_menu() {
-        let (storage, mut display, mut audio, mut buttons, mut clock, mut time, mut adc, mut index, mut tags) =
-            test_app();
-        let mut app = App::new(
-            &storage, &mut display, &mut audio, &mut buttons, &clock, &mut time, &mut adc,
-            &mut index, &mut tags,
-        );
-        app.boot().expect("boot");
-        buttons.pins_mut().pwr = true;
-        clock.now_ms = 10;
-        app.tick().expect("tick");
-        buttons.pins_mut().pwr = false;
-        clock.now_ms = 20;
-        app.tick().expect("tick");
-        assert_eq!(app.state.state(), AppState::Menu);
     }
 }

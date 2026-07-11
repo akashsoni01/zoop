@@ -103,7 +103,6 @@ pub fn stroke_circle(buf: &mut [u8], cx: i32, cy: i32, r: i32, thickness: i32, c
 
 /// Minimal 5×7 bitmap font (ASCII 32–90).
 const FONT_W: i32 = 5;
-const FONT_H: i32 = 7;
 
 fn glyph(c: char) -> [u8; 7] {
     match c {
@@ -232,7 +231,7 @@ mod tests {
 
     #[test]
     fn draw_str_changes_buffer() {
-        let mut a = vec![0xFF; BYTES];
+        let a = vec![0xFF; BYTES];
         let mut b = a.clone();
         draw_str(&mut b, 10, 10, "HI", 1, BLACK);
         assert_ne!(a, b);
