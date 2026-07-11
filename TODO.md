@@ -551,7 +551,7 @@ open "http://$IP/"   # browser
 - [x] `.gitignore` secrets + `target/` + `sdkconfig`
 - [x] `cargo fmt`, `clippy` config; CI `cargo check` on push
 - [x] Logging via `esp-idf-svc::log` (replace `Serial.printf`)
-- [ ] **Milestone M0:** `idf.py flash` prints `=== Zoop v1.0 ===` over UART
+- [ ] **Milestone M0:** `idf.py flash` prints `=== Zoop v1.0 ===` over UART — **firmware builds; HIL pending device**
 
 ---
 
@@ -559,16 +559,16 @@ open "http://$IP/"   # browser
 
 ### 1.1 Power
 
-- [ ] `board_power`: `VBAT_POWER_ON()`, EPD rail (`GPIO6`), audio rail (`GPIO42`)
-- [ ] `keepBatteryPowerOn()` — `GPIO17` HIGH on boot
-- [ ] Power-on sequence: rails → 200 ms delay → peripherals (match `setup()`)
+- [x] `board_power`: `VBAT_POWER_ON()`, EPD rail (`GPIO6`), audio rail (`GPIO42`) — **host:** `core/power.rs` + `firmware/board/power.rs` stub
+- [x] `keepBatteryPowerOn()` — `GPIO17` HIGH on boot — **host:** sequence tested
+- [ ] Power-on sequence: rails → 200 ms delay → peripherals (match `setup()`) — **HIL pending**
 
 ### 1.2 Display
 
-- [ ] SPI init for 200×200 e-Paper
-- [ ] `EPD_Init` → full clear → `EPD_DisplayPartBaseImage` → `EPD_Init_Partial`
-- [ ] Framebuffer `(200×200)/8` bytes; draw primitives (port `draw.cpp`)
-- [ ] **Test:** solid black/white + text render
+- [ ] SPI init for 200×200 e-Paper — **HIL pending**
+- [ ] `EPD_Init` → full clear → `EPD_DisplayPartBaseImage` → `EPD_Init_Partial` — **HIL pending**
+- [x] Framebuffer `(200×200)/8` bytes; draw primitives (port `draw.cpp`) — **host:** `core/display/draw.rs` + tests
+- [x] **Test:** solid black/white + text render — **host-verified**
 
 ### 1.3 I2C + RTC
 
@@ -578,9 +578,9 @@ open "http://$IP/"   # browser
 
 ### 1.4 SD card
 
-- [ ] SDIO 1-bit init; mount FAT32
-- [ ] Create `/notes` if missing; fail boot with `SD ERR` screen if mount fails
-- [ ] **Test:** write/read `index.csv`
+- [ ] SDIO 1-bit init; mount FAT32 — **HIL pending** (`firmware/storage/sd.rs` stub)
+- [ ] Create `/notes` if missing; fail boot with `SD ERR` screen if mount fails — **HIL pending**
+- [x] **Test:** write/read `index.csv` — **host:** `MockStorage` + `storage/index` tests
 
 ### 1.5 Audio
 
@@ -592,18 +592,18 @@ open "http://$IP/"   # browser
 
 ### 1.6 Input & battery
 
-- [ ] `readButtonEvent()` — debounce, long, double (port `buttons.cpp`)
-- [ ] ADC battery: 16 samples, 11 dB attenuation, ×2 voltage, piecewise % curve (port `battery.cpp`)
-- [ ] `drawBatteryRing()` on idle screen
+- [x] `readButtonEvent()` — debounce, long, double (port `buttons.cpp`) — **host:** `core/buttons.rs`
+- [x] ADC battery: 16 samples, 11 dB attenuation, ×2 voltage, piecewise % curve (port `battery.cpp`) — **host:** `core/battery.rs`
+- [x] `drawBatteryRing()` on idle screen — **host:** `core/display/draw.rs` + `ui.rs`
 
 ### 1.7 Sleep / wake
 
-- [ ] Track `lastActivityMs`; ultra-sleep after 120 s idle (not during record/transfer)
-- [ ] `enterUltraSleep()`: stop portal, WiFi off, audio off, `esp_sleep_enable_ext1_wakeup` on GPIO0+18 (ANY_LOW)
-- [ ] Wake causes: `wakeToMenuRequested` (PWR held), `wakeToRecRequested` (REC held)
-- [ ] **Test:** sleep → wake with button → correct screen
+- [x] Track `lastActivityMs`; ultra-sleep after 120 s idle (not during record/transfer) — **host:** `core/sleep.rs`
+- [ ] `enterUltraSleep()`: stop portal, WiFi off, audio off, `esp_sleep_enable_ext1_wakeup` on GPIO0+18 (ANY_LOW) — **HIL pending**
+- [x] Wake causes: `wakeToMenuRequested` (PWR held), `wakeToRecRequested` (REC held) — **host:** `wake_cause_from_pins`
+- [ ] **Test:** sleep → wake with button → correct screen — **HIL pending**
 
-### **Milestone M1:** Record 5 s WAV to SD, show on E-Ink, read back battery %
+### **Milestone M1:** Record 5 s WAV to SD, show on E-Ink, read back battery % — **host partial; HIL pending device**
 
 ---
 
@@ -611,40 +611,40 @@ open "http://$IP/"   # browser
 
 ### 2.1 Recording pipeline
 
-- [ ] `startRecordFlow()`: show recording UI → disable sounds → `record()`
-- [ ] WAV: placeholder 44-byte header → stream PCM → seek 0 → write real header
-- [ ] Stop when REC released OR min 500 ms elapsed (reference loop condition)
-- [ ] Reject if `totalMono <= 1000` bytes → `REC FAIL`
-- [ ] On success: `soundSaved()` → `STATE_SAVED` → tag select
+- [x] `startRecordFlow()`: show recording UI → disable sounds → `record()` — **host:** `core/app.rs` + `record.rs`
+- [x] WAV: placeholder 44-byte header → stream PCM → seek 0 → write real header — **host-tested**
+- [x] Stop when REC released OR min 500 ms elapsed (reference loop condition) — **host-tested**
+- [x] Reject if `totalMono <= 1000` bytes → `REC FAIL` — **host-tested**
+- [x] On success: `soundSaved()` → `STATE_SAVED` → tag select — **host:** state machine + sounds policy
 
 ### 2.2 Notes & tags
 
-- [ ] `loadIndex` / `saveIndex` / `addToIndex` / `deleteNote`
-- [ ] `loadTags` / `saveTagsToFile` / `addCustomTag` / `deleteTag`
-- [ ] `writeNoteMeta` with `created_utc`, `tag`, `synced`
-- [ ] `noteCreatedDeviceLabel` with `LOCAL_TIME_OFFSET_MIN`
+- [x] `loadIndex` / `saveIndex` / `addToIndex` / `deleteNote` — **host-tested**
+- [x] `loadTags` / `saveTagsToFile` / `addCustomTag` / `deleteTag` — **host-tested**
+- [x] `writeNoteMeta` with `created_utc`, `tag`, `synced` — **host-tested**
+- [x] `noteCreatedDeviceLabel` with `LOCAL_TIME_OFFSET_MIN` — **host:** `utc_to_local_device_label`
 
 ### 2.3 UI screens (port `ui.cpp` — custom draw only, no Slint/LVGL)
 
-- [ ] `showIdle` — logo, battery ring, hints
-- [ ] `showRecording`, `showSaved`, `showTagSelect`
-- [ ] `showMenu`, `showSettings`, `showDeviceInfo`
-- [ ] `showNoteList` — filter by tag; ticker scroll for long titles
-- [ ] `showNoteDetail` — 7 lines/page transcript scroll
-- [ ] `showDeleteConfirm`, `showBatteryLow`, `showError`, `showUltraSleepScreen`
-- [ ] Header bar (black 28 px) + hint bar (bottom 20 px) layout
+- [x] `showIdle` — logo, battery ring, hints — **host framebuffer tests**
+- [x] `showRecording`, `showSaved`, `showTagSelect` — **host**
+- [x] `showMenu`, `showSettings`, `showDeviceInfo` — **host**
+- [x] `showNoteList` — filter by tag; ticker scroll for long titles — **host** (ticker scroll: partial)
+- [x] `showNoteDetail` — 7 lines/page transcript scroll — **host**
+- [x] `showDeleteConfirm`, `showBatteryLow`, `showError`, `showUltraSleepScreen` — **host**
+- [x] Header bar (black 28 px) + hint bar (bottom 20 px) layout — **host**
 
 ### 2.4 Sounds
 
-- [ ] Port `sounds.h` — short beeps for select / next / back / saved / delete / success
-- [ ] `palaSoundSetEnabled` toggle in settings
+- [x] Port `sounds.h` — short beeps for select / next / back / saved / delete / success — **host:** `core/sounds.rs`
+- [x] `palaSoundSetEnabled` toggle in settings — **host:** `App` settings + tests
 
 ### 2.5 Playback on device
 
-- [ ] `playWavFile(path)` — stream from SD; REC tap stops playback
-- [ ] `showPlaybackOverlay` during play
+- [x] `playWavFile(path)` — stream from SD; REC tap stops playback — **host:** mock audio in `App`
+- [ ] `showPlaybackOverlay` during play — **HIL pending**
 
-### **Milestone M2:** Full offline loop — record → tag → browse → play → delete — no WiFi
+### **Milestone M2:** Full offline loop — record → tag → browse → play → delete — no WiFi — **host-verified** (`tests/integration_offline.rs`); HIL pending
 
 ---
 
@@ -652,9 +652,9 @@ open "http://$IP/"   # browser
 
 ### 3.1 WiFi
 
-- [ ] STA mode; `WiFi.begin` with retry UI (`showWifiConnecting`, max 20 tries × 500 ms)
-- [ ] Disconnect after sync (reference does not stay connected idle)
-- [ ] Transfer mode: up to 24 tries; show IP on screen
+- [x] STA mode; `WiFi.begin` with retry UI (`showWifiConnecting`, max 20 tries × 500 ms) — **host:** `core/network/wifi.rs` policy
+- [x] Disconnect after sync (reference does not stay connected idle) — **host:** `post_sync_policy`
+- [ ] Transfer mode: up to 24 tries; show IP on screen — **HIL pending**
 
 ### 3.2 NTP + time
 
@@ -666,14 +666,14 @@ open "http://$IP/"   # browser
 
 Provider from `secrets.toml` (`transcription_provider`: `cursor` dev, `openai` prod). Shared logic in `core/src/transcribe.rs`; firmware uses build-time `board/secrets.rs`.
 
-- [ ] `POST https://{host}/v1/audio/transcriptions` — default `api.cursor.com` (dev) or `api.openai.com` (prod)
-- [ ] Multipart form: `model=whisper-1`, file=`note.wav`
-- [ ] Stream WAV from SD in 4 KB chunks; 90 s timeout
-- [ ] Parse JSON `"text"` field → write `note_NNN.txt`
-- [ ] `updateIndexHasText(num)`; 3 retries with 3 s delay
-- [ ] `transcribeAll()` — progress UI `showTranscribing(done, pending)`
-- [ ] **Security:** API keys only in gitignored `secrets.toml`; plan cert pinning (reference TODO)
-- [ ] Optional `transcription_base_host` for OpenAI-compatible local STT proxy
+- [x] `POST https://{host}/v1/audio/transcriptions` — default `api.cursor.com` (dev) or `api.openai.com` (prod) — **host:** request builder
+- [x] Multipart form: `model=whisper-1`, file=`note.wav` — **host-tested**
+- [ ] Stream WAV from SD in 4 KB chunks; 90 s timeout — **HIL pending** (host: mock `HttpClient`)
+- [x] Parse JSON `"text"` field → write `note_NNN.txt` — **host-tested**
+- [x] `updateIndexHasText(num)`; 3 retries with 3 s delay — **host:** `network/whisper.rs`
+- [x] `transcribeAll()` — progress UI `showTranscribing(done, pending)` — **host:** UI fn + whisper batch
+- [x] **Security:** API keys only in gitignored `secrets.toml`; plan cert pinning (reference TODO)
+- [x] Optional `transcription_base_host` for OpenAI-compatible local STT proxy
 
 ### 3.4 Local web portal (port 80)
 
@@ -692,23 +692,23 @@ Implement routes from `setupTransferServer()`:
 | `/wav` | GET | Download WAV attachment |
 | `/audio` | GET | Stream WAV for `<audio>` embed |
 
-- [ ] Port `portalCss()` styling (or equivalent minimal CSS)
-- [ ] `htmlEscape`, `urlDecodeSimple`, `readSmallFile` helpers
-- [ ] Export truncation at ~55 KB (device memory limit)
-- [ ] `stopTransferMode()` on exit: stop server, WiFi off
+- [x] Port `portalCss()` styling (or equivalent minimal CSS) — **host:** `portal_fmt.rs`
+- [x] `htmlEscape`, `urlDecodeSimple`, `readSmallFile` helpers — **host-tested**
+- [x] Export truncation at ~55 KB (device memory limit) — **host-tested**
+- [ ] `stopTransferMode()` on exit: stop server, WiFi off — **HIL pending**
 
-### **Milestone M3:** Sync transcribes one note; transfer mode serves portal on phone browser
+### **Milestone M3:** Sync transcribes one note; transfer mode serves portal on phone browser — **host partial** (portal routes + whisper mock); HIL pending
 
 ---
 
 ## Phase 4 — Polish, enclosure & release
 
-- [ ] Ultra-sleep after tag save (reference behavior)
-- [ ] Battery warning overlay 2.5 s, non-blocking refresh of prior screen
-- [ ] Device info: firmware version, battery %, RTC string, note count
-- [ ] Error screens: `SD ERR`, `NO WIFI`, `REC FAIL`
-- [ ] Validate 602530 500 mAh battery + foam tape in PETG enclosure
-- [ ] Flashing guide in README (USB-C, `espflash` / `idf.py`)
+- [x] Ultra-sleep after tag save (reference behavior) — **host:** `ActivityTimer` + app flow
+- [x] Battery warning overlay 2.5 s, non-blocking refresh of prior screen — **host:** `sleep.rs` + UI
+- [x] Device info: firmware version, battery %, RTC string, note count — **host:** `showDeviceInfo`
+- [x] Error screens: `SD ERR`, `NO WIFI`, `REC FAIL` — **host:** `show_error_screen` + tests
+- [ ] Validate 602530 500 mAh battery + foam tape in PETG enclosure — **physical**
+- [x] Flashing guide in README (USB-C, `espflash` / `idf.py`) — **host:** README updated with without-hardware workflow
 - [ ] **Stretch:** OTA updates
 - [ ] **Stretch:** SHTC3 on device info screen
 

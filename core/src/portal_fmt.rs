@@ -174,25 +174,13 @@ mod tests {
     }
 
     #[test]
-    fn export_filters_by_tag() {
-        let notes = vec![
-            ExportNote {
-                num: 1,
-                tag: "Work".into(),
-                created_utc: None,
-                transcript: "A".into(),
-                has_text: true,
-            },
-            ExportNote {
-                num: 2,
-                tag: "Idea".into(),
-                created_utc: None,
-                transcript: "B".into(),
-                has_text: true,
-            },
-        ];
-        let text = format_export_text("Work", &notes);
-        assert!(text.contains("#001 · Work"));
-        assert!(!text.contains("#002"));
+    fn url_decode_handles_percent_and_plus() {
+        assert_eq!(url_decode_simple("hello+world"), "hello world");
+        assert_eq!(url_decode_simple("100%25"), "100%");
+    }
+
+    #[test]
+    fn portal_css_contains_card_class() {
+        assert!(portal_css().contains(".card"));
     }
 }

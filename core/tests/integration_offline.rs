@@ -45,14 +45,19 @@ fn offline_record_tag_list_play_delete() {
     app.boot(&clock).expect("boot");
     assert_eq!(app.state.state(), AppState::Idle);
 
+    let mut t = 0u64;
+
+    // Hold REC → record
     buttons.pins_mut().rec = true;
-    for t in (0..=500).step_by(50) {
+    for _ in 0..30 {
+        t += 50;
         advance(&mut clock, &mut buttons, &mut app, t);
     }
     assert_eq!(app.state.state(), AppState::Recording);
 
     buttons.pins_mut().rec = false;
-    for t in (600..=2000).step_by(200) {
+    for _ in 0..15 {
+        t += 100;
         advance(&mut clock, &mut buttons, &mut app, t);
         if app.state.state() == AppState::TagSelect {
             break;
@@ -60,53 +65,82 @@ fn offline_record_tag_list_play_delete() {
     }
     assert_eq!(app.state.state(), AppState::TagSelect);
 
+    // Save tag (long REC) — release as soon as Idle to avoid accidental re-record
     buttons.pins_mut().rec = true;
-    advance(&mut clock, &mut buttons, &mut app, 2100);
-    buttons.pins_mut().rec = false;
-    advance(&mut clock, &mut buttons, &mut app, 2200);
+    for _ in 0..15 {
+        t += 50;
+        advance(&mut clock, &mut buttons, &mut app, t);
+        if app.state.state() == AppState::Idle {
+            buttons.pins_mut().rec = false;
+            break;
+        }
+    }
+    if app.state.state() != AppState::Idle {
+        buttons.pins_mut().rec = false;
+        for _ in 0..10 {
+            t += 50;
+            advance(&mut clock, &mut buttons, &mut app, t);
+        }
+    }
     assert_eq!(app.state.state(), AppState::Idle);
     assert_eq!(app.index.len(), 1);
 
+    // Menu (PWR single needs debounce)
     buttons.pins_mut().pwr = true;
-    advance(&mut clock, &mut buttons, &mut app, 2300);
+    t += 10;
+    advance(&mut clock, &mut buttons, &mut app, t);
+    t += 10;
+    advance(&mut clock, &mut buttons, &mut app, t);
     buttons.pins_mut().pwr = false;
-    advance(&mut clock, &mut buttons, &mut app, 2320);
+    t += 50;
+    advance(&mut clock, &mut buttons, &mut app, t);
     assert_eq!(app.state.state(), AppState::Menu);
 
+    // Open notes (REC single)
     buttons.pins_mut().rec = true;
-    advance(&mut clock, &mut buttons, &mut app, 2400);
+    t += 10;
+    advance(&mut clock, &mut buttons, &mut app, t);
     buttons.pins_mut().rec = false;
-    advance(&mut clock, &mut buttons, &mut app, 2420);
+    t += 250;
+    advance(&mut clock, &mut buttons, &mut app, t);
+    t += 250;
+    advance(&mut clock, &mut buttons, &mut app, t);
     assert_eq!(app.state.state(), AppState::NoteList);
 
+    // Open detail (REC single)
     buttons.pins_mut().rec = true;
-    advance(&mut clock, &mut buttons, &mut app, 2500);
+    t += 10;
+    advance(&mut clock, &mut buttons, &mut app, t);
     buttons.pins_mut().rec = false;
-    advance(&mut clock, &mut buttons, &mut app, 2520);
+    t += 250;
+    advance(&mut clock, &mut buttons, &mut app, t);
+    t += 250;
+    advance(&mut clock, &mut buttons, &mut app, t);
     assert_eq!(app.state.state(), AppState::NoteDetail);
 
+    // Long REC → delete confirm
     buttons.pins_mut().rec = true;
-    advance(&mut clock, &mut buttons, &mut app, 2600);
-
-    buttons.pins_mut().rec = false;
-    advance(&mut clock, &mut buttons, &mut app, 2620);
-
-    buttons.pins_mut().rec = true;
-    for t in (2700..=2900).step_by(50) {
+    for _ in 0..15 {
+        t += 50;
         advance(&mut clock, &mut buttons, &mut app, t);
         if app.state.state() == AppState::DeleteConfirm {
             break;
         }
     }
     buttons.pins_mut().rec = false;
-    advance(&mut clock, &mut buttons, &mut app, 3000);
+    t += 50;
+    advance(&mut clock, &mut buttons, &mut app, t);
+    assert_eq!(app.state.state(), AppState::DeleteConfirm);
 
-    if app.state.state() == AppState::DeleteConfirm {
-        buttons.pins_mut().rec = true;
-        advance(&mut clock, &mut buttons, &mut app, 3100);
-        buttons.pins_mut().rec = false;
-        advance(&mut clock, &mut buttons, &mut app, 3120);
-    }
+    // Confirm delete (REC single)
+    buttons.pins_mut().rec = true;
+    t += 10;
+    advance(&mut clock, &mut buttons, &mut app, t);
+    buttons.pins_mut().rec = false;
+    t += 250;
+    advance(&mut clock, &mut buttons, &mut app, t);
+    t += 250;
+    advance(&mut clock, &mut buttons, &mut app, t);
 
     let mut reloaded = IndexStore::new();
     load_index(&storage, &mut reloaded).expect("reload");

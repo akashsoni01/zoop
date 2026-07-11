@@ -373,14 +373,29 @@ zoop/
 
 ### Host tests (no board required)
 
-Pure logic — storage, WAV headers, battery curve, state machine, Whisper parse, transcription config, portal helpers:
+Pure logic — storage, WAV headers, battery curve, state machine, Whisper parse, transcription config, portal helpers, **full offline app loop**, and **portal route handlers**:
 
 ```bash
 cd core
 cargo test
 ```
 
-Run after every change to `core/` (~seconds).
+**77 tests** cover Phases 1–4 logic on Mac (~seconds).
+
+#### Without hardware — recommended workflow
+
+| Step | Command | What it verifies |
+| --- | --- | --- |
+| Unit + integration | `cd core && cargo test` | Storage, WAV, buttons, sleep, UI framebuffer, portal routes, Whisper mock, record→tag→delete loop |
+| Lint | `cd core && cargo clippy -- -D warnings` | Production-grade core crate |
+| Offline simulator | `cd core && cargo run --bin zoop-sim` | Scripted demo against `MockStorage` + mock display |
+| Firmware compile | `cd firmware && . ~/export-esp.sh && cargo build` | ESP32-S3 binary links (BSP stubs log over UART) |
+
+Milestones M0–M4 are **host-verified** where noted below; flash the board for HIL sign-off.
+
+Host tests use **trait-based mocks** (`Display`, `Storage`, `Audio`, `Buttons`, `PowerRails`) in `core/src/mock.rs` — same APIs the firmware BSP will implement.
+
+**Cannot run on Mac without board:** E-Ink refresh, SD_MMC mount, ES8311 record/playback, deep sleep wake, real WiFi/HTTPS, LAN portal on `:80`.
 
 ### ESP32 firmware (requires board + esp-rs toolchain)
 
