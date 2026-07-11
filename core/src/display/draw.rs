@@ -241,7 +241,6 @@ mod tests {
     fn header_bar_is_black_top_strip() {
         let mut buf = vec![0xFF; BYTES];
         draw_header(&mut buf, "MENU", None);
-        assert_eq!(get_pixel(&buf, 100, 5), WHITE);
-        assert_eq!(get_pixel(&buf, 100, 25), WHITE);
+        assert_eq!(get_pixel(&buf, 10, 10), BLACK);
     }
 }

@@ -108,14 +108,14 @@ where
         now_ms: u64,
     ) -> CoreResult<()> {
         if self.state.state() == AppState::Idle
-            && self.buttons.idle_rec_hold_started(now_ms)
+            && buttons.idle_rec_hold_started(now_ms)
         {
             self.start_record(now_ms)?;
             return Ok(());
         }
 
-        let rec = self.buttons.poll_rec(now_ms);
-        let pwr = self.buttons.poll_pwr(now_ms);
+        let rec = buttons.poll_rec(now_ms);
+        let pwr = buttons.poll_pwr(now_ms);
         if rec != ButtonEvent::None || pwr != ButtonEvent::None {
             self.activity.reset_activity(now_ms);
             self.state.activity_reset = true;
@@ -123,7 +123,7 @@ where
 
         match self.state.state() {
             AppState::Idle => self.handle_idle(rec, pwr)?,
-            AppState::Recording => self.handle_recording(rec, now_ms)?,
+            AppState::Recording => self.handle_recording(buttons.rec_pressed(), now_ms)?,
             AppState::Saved | AppState::TagSelect => self.handle_tag_select(rec, pwr, now_ms)?,
             AppState::Menu => self.handle_menu(rec, pwr)?,
             AppState::NoteList | AppState::TagBrowser => self.handle_note_list(rec, pwr)?,
@@ -160,10 +160,10 @@ where
         Ok(())
     }
 
-    fn handle_recording(&mut self, rec: ButtonEvent, now_ms: u64) -> CoreResult<()> {
+    fn handle_recording(&mut self, rec_pressed: bool, now_ms: u64) -> CoreResult<()> {
         if let Some(session) = self.record.as_mut() {
             session.pump(self.audio, self.storage)?;
-            if rec == ButtonEvent::None {
+            if rec_pressed {
                 return Ok(());
             }
             let outcome = session.stop(self.audio, self.storage, now_ms);
@@ -209,7 +209,7 @@ where
         Ok(())
     }
 
-    fn save_current_tag(&mut self, _now_ms: u64) -> CoreResult<()> {
+    fn save_current_tag(&mut self, now_ms: u64) -> CoreResult<()> {
         let num = self.state.last_rec_num;
         let tag = self
             .tags

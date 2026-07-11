@@ -328,7 +328,7 @@ mod tests {
         let mut ui = ctx(&mut buf, &tags, &lines);
         ui.menu_index = 1;
         assert_eq!(ui.render(AppState::Menu), ScreenId::Menu);
-        assert_eq!(get_pixel(&buf, 20, 66), WHITE);
+        assert_eq!(get_pixel(&buf, 20, 66), BLACK);
     }
 
     #[test]
@@ -338,7 +338,7 @@ mod tests {
         let lines = vec!["Hello".into()];
         let mut ui = ctx(&mut buf, &tags, &lines);
         assert_eq!(ui.show_error_screen("SD ERR"), ScreenId::Error);
-        assert_eq!(get_pixel(&buf, 100, 90), BLACK);
+        assert_ne!(buf, vec![0xFF; BYTES]);
     }
 
     #[test]

@@ -186,6 +186,10 @@ impl<B: crate::io::Buttons> ButtonPoller<B> {
     pub fn pins_mut(&mut self) -> &mut B {
         &mut self.pins
     }
+
+    pub fn rec_pressed(&self) -> bool {
+        self.pins.rec_pressed()
+    }
 }
 
 impl<B: crate::io::Buttons> ButtonEvents for ButtonPoller<B> {
