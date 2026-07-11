@@ -32,11 +32,11 @@ Port of the C/Arduino [`pala_note`](./pala_note/) firmware to **Rust** on the Wa
 
 ### Rust-specific goals
 
-- [ ] Typed state machine (no stringly state in the main loop)
+- [x] Typed state machine (no stringly state in the main loop)
 - [ ] Fixed-size or PSRAM-backed audio buffers — no unbounded `Vec` growth during record/playback
-- [ ] Atomic SD writes (`.tmp` → rename) for index and tags
-- [ ] Secrets outside git (`secrets.toml` / build-time env)
-- [ ] Modular crates so BSP can be tested on host where possible
+- [x] Atomic SD writes (`.tmp` → rename) for index and tags
+- [x] Secrets outside git (`secrets.toml` / build-time env)
+- [x] Modular crates so BSP can be tested on host where possible
 
 ---
 
@@ -244,10 +244,10 @@ Mount: `/sdcard` (alias paths as in reference).
 
 ### Tag rules (port `notes.cpp`)
 
-- [ ] Max 31 chars per tag; strip `,` and newlines
-- [ ] Case-insensitive duplicate rejection on add
-- [ ] `"Untagged"` cannot be deleted; deleting a tag moves its notes to `Untagged`
-- [ ] `deleteNote(num)` removes `.wav`, `.txt`, `.meta` and index row
+- [x] Max 31 chars per tag; strip `,` and newlines
+- [x] Case-insensitive duplicate rejection on add
+- [x] `"Untagged"` cannot be deleted; deleting a tag moves its notes to `Untagged`
+- [x] `deleteNote(num)` removes `.wav`, `.txt`, `.meta` and index row
 
 ---
 
@@ -543,14 +543,14 @@ open "http://$IP/"   # browser
 
 > Stack is **locked** — see [Locked tech stack & framework decisions](#locked-tech-stack--framework-decisions). Do not add Slint, LVGL, egui, tokio, or SPA deps in this phase.
 
-- [ ] Create `core/` host crate + `firmware/` ESP crate (see [testability layout](#recommended-repo-layout-for-testability))
-- [ ] Create `firmware/` Cargo workspace targeting `xtensa-esp32s3-espidf`
-- [ ] Add `rust-toolchain.toml` + document `espup install` / `source export-esp.sh`
-- [ ] `board/config.rs` — pins, timing, paths (table above)
-- [ ] `secrets.example.toml` with `wifi_ssid`, `wifi_pass`, `openai_key`, `local_time_offset_min`
-- [ ] `.gitignore` secrets + `target/` + `sdkconfig`
-- [ ] `cargo fmt`, `clippy` config; CI `cargo check` on push
-- [ ] Logging via `esp-idf-svc::log` (replace `Serial.printf`)
+- [x] Create `core/` host crate + `firmware/` ESP crate (see [testability layout](#recommended-repo-layout-for-testability))
+- [x] Create `firmware/` Cargo workspace targeting `xtensa-esp32s3-espidf`
+- [x] Add `rust-toolchain.toml` + document `espup install` / `source export-esp.sh`
+- [x] `board/config.rs` — pins, timing, paths (table above)
+- [x] `secrets.example.toml` with `wifi_ssid`, `wifi_pass`, `openai_key`, `local_time_offset_min`
+- [x] `.gitignore` secrets + `target/` + `sdkconfig`
+- [x] `cargo fmt`, `clippy` config; CI `cargo check` on push
+- [x] Logging via `esp-idf-svc::log` (replace `Serial.printf`)
 - [ ] **Milestone M0:** `idf.py flash` prints `=== Zoop v1.0 ===` over UART
 
 ---

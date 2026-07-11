@@ -360,10 +360,64 @@ Implementation tracked in [`TODO.md`](./TODO.md) Phase 3+; transport choice shou
 
 ```
 zoop/
+  core/              # Host-testable logic — `cargo test` on Mac
+  firmware/          # ESP32-S3 binary — `cargo build` / `cargo espflash`
   README.md          ← you are here
   TODO.md            ← Rust IoT port checklist
   pala_note/         ← reference C/Arduino firmware
 ```
+
+---
+
+## Getting started (development)
+
+### Host tests (no board required)
+
+Pure logic — storage, WAV headers, battery curve, state machine, Whisper parse, portal helpers:
+
+```bash
+cd core
+cargo test
+```
+
+Run after every change to `core/` (~seconds).
+
+### ESP32 firmware (requires board + esp-rs toolchain)
+
+**One-time setup (macOS):**
+
+```bash
+# Rust (if needed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# esp-rs toolchain for ESP32-S3 (Xtensa)
+cargo install espup espflash
+espup install
+# Every new terminal session:
+. ~/export-esp.sh   # or the path shown by espup
+```
+
+**Build & flash:**
+
+```bash
+cd firmware
+cp secrets.example.toml secrets.toml   # edit WiFi + OpenAI key — never commit secrets.toml
+cargo build
+cargo espflash flash --monitor
+```
+
+**M0 pass criteria:** UART shows `=== Zoop v1.0 ===` at 115200 baud.
+
+If `cargo check` fails with `custom toolchain 'esp' ... is not installed`, run `espup install` and source `export-esp.sh` first.
+
+### Daily workflow
+
+1. Change logic in `core/` → `cargo test` (Mac)
+2. Wire into `firmware/` → `cargo build` (Mac, ~30–120 s)
+3. Flash → `cargo espflash flash --monitor`
+4. Exercise one milestone on the Waveshare board
+
+See [`TODO.md`](./TODO.md) for phase milestones, pin map, and HIL test plans.
 
 ---
 

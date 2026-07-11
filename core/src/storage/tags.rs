@@ -5,14 +5,14 @@ use super::index::{save_index, IndexStore};
 use super::FileStorage;
 
 /// In-memory tag list with SD persistence — ports `notes.cpp` tag functions.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TagStore {
     tags: Vec<String>,
 }
 
 impl TagStore {
     pub fn new() -> Self {
-        Self { tags: Vec::new() }
+        Self::default()
     }
 
     pub fn tags(&self) -> &[String] {

@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  core:
+    name: core (host tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --workspace --exclude zoop-firmware
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --exclude zoop-firmware -- -D warnings
+
+  # Firmware needs esp toolchain; run locally after: espup install && . ~/export-esp.sh
+  # firmware:
+  #   name: firmware (xtensa check)
+  #   runs-on: ubuntu-latest
+  #   steps: ...
