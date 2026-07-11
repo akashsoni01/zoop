@@ -72,6 +72,55 @@ pub fn export_filename(filter: &str) -> String {
     }
 }
 
+/// Simple URL decode — ports `urlDecodeSimple()` from `network.cpp`.
+pub fn url_decode_simple(s: &str) -> String {
+    let replaced = s.replace('+', " ");
+    let mut out = String::new();
+    let bytes = replaced.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            let hex = &replaced[i + 1..i + 3];
+            if let Ok(v) = u8::from_str_radix(hex, 16) {
+                out.push(v as char);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+    out
+}
+
+/// Port `portalCss()` from `network.cpp`.
+pub fn portal_css() -> String {
+    String::from(
+        "<style>\
+         :root{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;color:#111;background:#f3f0e9;}\
+         body{margin:0;padding:24px;background:#f3f0e9;}\
+         .wrap{max-width:780px;margin:0 auto;}\
+         .top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px;}\
+         h1{font-size:44px;letter-spacing:-.06em;line-height:.9;margin:0;font-weight:800;}\
+         .sub{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#6a665f;margin-top:10px;}\
+         .pill{display:inline-flex;border:1px solid #111;border-radius:999px;padding:8px 12px;font-size:13px;background:#fffaf1;}\
+         .grid{display:grid;grid-template-columns:1fr;gap:14px;}\
+         .card{background:#fffaf1;border:1.5px solid #111;border-radius:24px;padding:18px;box-shadow:4px 4px 0 #111;}\
+         .row{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;}\
+         .num{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#6a665f;margin-bottom:8px;}\
+         .date{font-size:13px;color:#6a665f;margin:-4px 0 12px;}\
+         .title{font-size:24px;line-height:1.05;letter-spacing:-.04em;font-weight:750;margin:0 0 12px;}\
+         .tag{border:1px solid #111;border-radius:999px;padding:5px 9px;font-size:12px;white-space:nowrap;background:#111;color:#fff;}\
+         .text{font-size:15px;line-height:1.45;color:#222;margin:0 0 14px;white-space:pre-wrap;}\
+         .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}\
+         a.btn{color:#111;text-decoration:none;border:1px solid #111;border-radius:999px;padding:8px 12px;background:#f3f0e9;font-size:13px;}\
+         a.btn.primary{background:#111;color:#fff;}\
+         .empty{border:1.5px dashed #111;border-radius:24px;padding:34px;text-align:center;color:#6a665f;}\
+         audio{width:100%;margin-top:8px;}\
+         </style>",
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

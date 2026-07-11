@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 description = "Host-testable core logic for Zoop (storage, WAV, battery, state)"
 
+[[bin]]
+name = "zoop-sim"
+path = "src/bin/zoop_sim.rs"
+
 [dependencies]
 thiserror = "2"
 tempfile = "3"
