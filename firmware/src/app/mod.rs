@@ -1,4 +1,7 @@
-//! Application layer — re-exports core state machine.
+//! Application layer — firmware engine + core state machine re-exports.
 
-pub use zoop_core::state::{AppState, StateMachine, Transition};
+pub mod engine;
+
+pub use engine::FirmwareEngine;
 pub use zoop_core::sounds::SoundsPolicy;
+pub use zoop_core::state::{AppState, StateMachine, Transition};

@@ -107,7 +107,11 @@ fn append_pcm(storage: &impl FileStorage, path: &str, pcm: &[u8]) -> CoreResult<
     storage.write_bytes(path, &existing)
 }
 
-fn rewrite_header(storage: &impl FileStorage, path: &str, header: &[u8; HEADER_LEN]) -> CoreResult<()> {
+fn rewrite_header(
+    storage: &impl FileStorage,
+    path: &str,
+    header: &[u8; HEADER_LEN],
+) -> CoreResult<()> {
     let mut file = storage
         .read_bytes(path)?
         .ok_or_else(|| CoreError::Storage("wav missing".into()))?;
@@ -167,7 +171,10 @@ mod tests {
             RecordOutcome::Success { num, .. } => assert_eq!(num, 2),
             other => panic!("expected success, got {other:?}"),
         }
-        let bytes = storage.read_bytes(&session.path).expect("read").expect("file");
+        let bytes = storage
+            .read_bytes(&session.path)
+            .expect("read")
+            .expect("file");
         let hdr = parse_wav_header(&bytes).expect("hdr");
         assert!(hdr.data_bytes > MIN_MONO_BYTES as u32);
     }

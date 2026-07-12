@@ -15,13 +15,8 @@ impl WifiManager {
     }
 
     pub fn connect_step(&mut self, connected: bool, elapsed_ms: u64) {
-        self.phase = advance_wifi_connect(
-            self.phase,
-            connected,
-            elapsed_ms,
-            500,
-            SYNC_MAX_ATTEMPTS,
-        );
+        self.phase =
+            advance_wifi_connect(self.phase, connected, elapsed_ms, 500, SYNC_MAX_ATTEMPTS);
         info!("wifi: phase {:?}", self.phase);
     }
 }

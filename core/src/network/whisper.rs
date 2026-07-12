@@ -128,8 +128,7 @@ mod tests {
             .write_bytes(&note_path(1, "wav"), &[0u8; 2048])
             .expect("wav");
 
-        let config =
-            TranscriptionConfig::from_secrets("openai", "sk-test", "", None).expect("cfg");
+        let config = TranscriptionConfig::from_secrets("openai", "sk-test", "", None).expect("cfg");
         let mut http = MockHttp;
         assert!(transcribe_note(&storage, &mut index, &config, 1, &mut http).expect("tx"));
         assert!(index.find(1).unwrap().has_text);

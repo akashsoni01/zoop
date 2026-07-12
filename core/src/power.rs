@@ -11,11 +11,7 @@ pub const POWER_ON_SEQUENCE: &[&str] = &[
 ];
 
 /// Power-off / sleep prep order.
-pub const POWER_SLEEP_SEQUENCE: &[&str] = &[
-    "audio_power_off",
-    "epd_power_off",
-    "battery_hold_on",
-];
+pub const POWER_SLEEP_SEQUENCE: &[&str] = &["audio_power_off", "epd_power_off", "battery_hold_on"];
 
 /// Run the standard boot power sequence.
 pub fn power_on_sequence(power: &mut impl PowerRails) {

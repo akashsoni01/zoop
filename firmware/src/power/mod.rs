@@ -4,7 +4,12 @@ use log::info;
 use zoop_core::battery::battery_percent_from_adc_samples;
 use zoop_core::error::CoreResult;
 use zoop_core::io::BatteryAdc;
-use zoop_core::sleep::ActivityTimer;
+
+use crate::board::config::BAT_ADC_PIN;
+
+pub mod sleep;
+
+pub use sleep::SleepManager;
 
 pub struct BatteryMonitor;
 
@@ -15,30 +20,15 @@ impl BatteryMonitor {
     }
 }
 
+impl Default for BatteryMonitor {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl BatteryAdc for BatteryMonitor {
     fn read_mv_samples(&mut self, _count: usize) -> CoreResult<Vec<u32>> {
+        info!("battery: ADC stub GPIO{BAT_ADC_PIN}");
         Ok(vec![2100; 16])
-    }
-}
-
-pub struct SleepManager {
-    pub timer: ActivityTimer,
-}
-
-impl SleepManager {
-    pub fn new() -> Self {
-        Self {
-            timer: ActivityTimer::default(),
-        }
-    }
-
-    pub fn enter_ultra_sleep(&self) {
-        info!("sleep: enter_ultra_sleep stub (ext1 wake — HIL pending)");
-    }
-}
-
-impl Default for SleepManager {
-    fn default() -> Self {
-        Self::new()
     }
 }

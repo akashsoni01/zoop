@@ -34,7 +34,10 @@ pub fn advance_wifi_connect(
             attempt: 1,
             max_attempts,
         },
-        WifiConnectPhase::Connecting { attempt, max_attempts } => {
+        WifiConnectPhase::Connecting {
+            attempt,
+            max_attempts,
+        } => {
             if connected {
                 return WifiConnectPhase::Connected;
             }
@@ -75,13 +78,7 @@ mod tests {
             SYNC_RETRY_MS,
             SYNC_MAX_ATTEMPTS,
         );
-        assert!(matches!(
-            p,
-            WifiConnectPhase::Connecting {
-                attempt: 1,
-                ..
-            }
-        ));
+        assert!(matches!(p, WifiConnectPhase::Connecting { attempt: 1, .. }));
         let p2 = advance_wifi_connect(p, true, 500, SYNC_RETRY_MS, SYNC_MAX_ATTEMPTS);
         assert_eq!(p2, WifiConnectPhase::Connected);
     }

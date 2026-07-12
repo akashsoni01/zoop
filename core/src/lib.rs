@@ -16,6 +16,7 @@ pub mod sleep;
 pub mod sounds;
 pub mod state;
 pub mod storage;
+pub mod time;
 pub mod transcribe;
 pub mod wav;
 pub mod whisper_parse;
@@ -25,6 +26,9 @@ pub use battery::{battery_percent_from_voltage, BatteryCurve};
 pub use buttons::ButtonEngine;
 pub use error::{CoreError, CoreResult};
 pub use io::*;
+pub use network::portal::{handle_portal_request, serve_portal, HttpRequest, HttpResponse};
+pub use network::whisper::{transcribe_all, transcribe_note, HttpClient};
+pub use network::wifi::{advance_wifi_connect, WifiConnectPhase, WifiMode};
 pub use paths::*;
 pub use portal_fmt::{format_export_text, html_escape, portal_css, url_decode_simple, ExportNote};
 pub use power::{power_on_sequence, power_sleep_sequence};
@@ -37,12 +41,10 @@ pub use storage::{
     read_note_meta_value, save_index, save_tag, save_tags, update_index_has_text, write_note_meta,
     FileStorage, IndexStore, MockStorage, NoteEntry, TagStore,
 };
-pub use wav::{parse_wav_header, WavHeader, SAMPLE_RATE};
+pub use time::{TimeSyncState, NTP_SERVERS};
 pub use transcribe::{
     parse_transcription_response, TranscribeError, TranscriptionConfig, TranscriptionProvider,
     CURSOR_HOST, DEFAULT_BOUNDARY, DEFAULT_MODEL, OPENAI_HOST, TRANSCRIPTION_PATH,
 };
+pub use wav::{parse_wav_header, WavHeader, SAMPLE_RATE};
 pub use whisper_parse::parse_whisper_text;
-pub use network::portal::{handle_portal_request, serve_portal, HttpRequest, HttpResponse};
-pub use network::whisper::{transcribe_all, transcribe_note, HttpClient};
-pub use network::wifi::{advance_wifi_connect, WifiConnectPhase, WifiMode};

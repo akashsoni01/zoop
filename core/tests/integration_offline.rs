@@ -2,9 +2,7 @@
 
 use zoop_core::app::App;
 use zoop_core::buttons::ButtonPoller;
-use zoop_core::mock::{
-    MockAudio, MockBatteryAdc, MockButtons, MockClock, MockDisplay, MockTime,
-};
+use zoop_core::mock::{MockAudio, MockBatteryAdc, MockButtons, MockClock, MockDisplay, MockTime};
 use zoop_core::paths::note_path;
 use zoop_core::state::AppState;
 use zoop_core::storage::{load_index, FileStorage, IndexStore, MockStorage, TagStore};

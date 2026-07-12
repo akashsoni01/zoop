@@ -102,7 +102,14 @@ impl UiContext<'_> {
         draw_header(self.buf, "RECORDING", None);
         fill_circle(self.buf, (WIDTH / 2) as i32, 100, 36, BLACK);
         stroke_circle(self.buf, (WIDTH / 2) as i32, 100, 52, 3, BLACK);
-        draw_str_centered(self.buf, (WIDTH / 2) as i32, 155, "Release to stop", 1, BLACK);
+        draw_str_centered(
+            self.buf,
+            (WIDTH / 2) as i32,
+            155,
+            "Release to stop",
+            1,
+            BLACK,
+        );
         draw_hints(self.buf, "", "");
         ScreenId::Recording
     }
@@ -193,7 +200,14 @@ impl UiContext<'_> {
             self.list_filter.to_string()
         };
         draw_header(self.buf, &title, None);
-        draw_str(self.buf, 12, 40, &format!("#{:03}", self.detail_num.max(1)), 1, BLACK);
+        draw_str(
+            self.buf,
+            12,
+            40,
+            &format!("#{:03}", self.detail_num.max(1)),
+            1,
+            BLACK,
+        );
         draw_str(self.buf, 12, 58, "Voice note", 1, BLACK);
         draw_hints(self.buf, "Open", "Next");
         ScreenId::NoteList
@@ -231,7 +245,14 @@ impl UiContext<'_> {
         draw_header(self.buf, "TRANSFER", None);
         draw_str_centered(self.buf, (WIDTH / 2) as i32, 70, "Portal active", 1, BLACK);
         if !self.transfer_ip.is_empty() {
-            draw_str_centered(self.buf, (WIDTH / 2) as i32, 100, self.transfer_ip, 1, BLACK);
+            draw_str_centered(
+                self.buf,
+                (WIDTH / 2) as i32,
+                100,
+                self.transfer_ip,
+                1,
+                BLACK,
+            );
         }
         draw_hints(self.buf, "Exit", "");
         ScreenId::Transfer
@@ -255,7 +276,14 @@ impl UiContext<'_> {
 
     pub fn show_ultra_sleep(&mut self) -> ScreenId {
         clear_screen(self.buf);
-        draw_str_centered(self.buf, (WIDTH / 2) as i32, (HEIGHT / 2) as i32 - 10, "Sleeping", 1, BLACK);
+        draw_str_centered(
+            self.buf,
+            (WIDTH / 2) as i32,
+            (HEIGHT / 2) as i32 - 10,
+            "Sleeping",
+            1,
+            BLACK,
+        );
         ScreenId::UltraSleep
     }
 

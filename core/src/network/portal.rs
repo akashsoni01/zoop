@@ -196,8 +196,8 @@ fn handle_root<S: FileStorage>(
         html.push_str("<div class='grid'>");
         for entry in visible.iter().rev() {
             let num = entry.num;
-            let mut transcript = read_small_file(storage, &note_path(num, "txt"), 1200)
-                .unwrap_or_default();
+            let mut transcript =
+                read_small_file(storage, &note_path(num, "txt"), 1200).unwrap_or_default();
             if transcript.is_empty() {
                 transcript = if entry.has_text {
                     "(empty transcript)".to_string()
@@ -214,8 +214,7 @@ fn handle_root<S: FileStorage>(
             if title.is_empty() || title == "Not transcribed yet." {
                 title = format!("Voice note {num}");
             }
-            let created = read_note_meta_value(storage, num, "created_utc")?
-                .unwrap_or_default();
+            let created = read_note_meta_value(storage, num, "created_utc")?.unwrap_or_default();
             html.push_str("<div class='card'>");
             html.push_str(&format!(
                 "<div class='row'><div><div class='num'>#{num}</div>\
@@ -235,9 +234,7 @@ fn handle_root<S: FileStorage>(
             ));
             html.push_str(&format!("<p class='text'>{}</p>", html_escape(&transcript)));
             if storage.exists(&note_path(num, "wav"))? {
-                html.push_str(&format!(
-                    "<audio controls src='/audio?num={num}'></audio>"
-                ));
+                html.push_str(&format!("<audio controls src='/audio?num={num}'></audio>"));
             }
             html.push_str("<div class='actions'>");
             html.push_str(&format!(
@@ -310,8 +307,8 @@ fn build_export_notes<S: FileStorage>(
 ) -> CoreResult<Vec<ExportNote>> {
     let mut out = Vec::new();
     for e in index.entries() {
-        let transcript = read_small_file(storage, &note_path(e.num, "txt"), 4000)
-            .unwrap_or_default();
+        let transcript =
+            read_small_file(storage, &note_path(e.num, "txt"), 4000).unwrap_or_default();
         let created = read_note_meta_value(storage, e.num, "created_utc")?;
         out.push(ExportNote {
             num: e.num,
@@ -442,11 +439,7 @@ fn send_file_by_num<S: FileStorage>(
     Ok(HttpResponse::file(mime, data, attach))
 }
 
-fn read_small_file<S: FileStorage>(
-    storage: &S,
-    path: &str,
-    max_len: usize,
-) -> CoreResult<String> {
+fn read_small_file<S: FileStorage>(storage: &S, path: &str, max_len: usize) -> CoreResult<String> {
     let Some(bytes) = storage.read_bytes(path)? else {
         return Ok(String::new());
     };

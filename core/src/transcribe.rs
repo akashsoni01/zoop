@@ -180,13 +180,9 @@ mod tests {
 
     #[test]
     fn base_host_override() {
-        let cfg = TranscriptionConfig::from_secrets(
-            "cursor",
-            "",
-            "crsr_test",
-            Some("localhost:8000"),
-        )
-        .unwrap();
+        let cfg =
+            TranscriptionConfig::from_secrets("cursor", "", "crsr_test", Some("localhost:8000"))
+                .unwrap();
         assert_eq!(cfg.host, "localhost:8000");
     }
 
@@ -202,11 +198,15 @@ mod tests {
     fn rejects_missing_key() {
         assert!(matches!(
             TranscriptionConfig::from_secrets("openai", "", "", None),
-            Err(TranscribeError::MissingApiKey(TranscriptionProvider::OpenAi))
+            Err(TranscribeError::MissingApiKey(
+                TranscriptionProvider::OpenAi
+            ))
         ));
         assert!(matches!(
             TranscriptionConfig::from_secrets("cursor", "", "", None),
-            Err(TranscribeError::MissingApiKey(TranscriptionProvider::Cursor))
+            Err(TranscribeError::MissingApiKey(
+                TranscriptionProvider::Cursor
+            ))
         ));
     }
 
@@ -223,7 +223,10 @@ mod tests {
         let post = cfg.multipart_epilogue();
         assert_eq!(post, format!("\r\n--{}--\r\n", cfg.boundary));
 
-        assert_eq!(cfg.multipart_total_len(1024, "note.wav"), pre.len() + 1024 + post.len());
+        assert_eq!(
+            cfg.multipart_total_len(1024, "note.wav"),
+            pre.len() + 1024 + post.len()
+        );
     }
 
     #[test]

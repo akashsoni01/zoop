@@ -1,7 +1,7 @@
 pub mod portal;
-pub mod wifi;
 pub mod whisper;
+pub mod wifi;
 
 pub use portal::*;
-pub use wifi::*;
 pub use whisper::*;
+pub use wifi::*;

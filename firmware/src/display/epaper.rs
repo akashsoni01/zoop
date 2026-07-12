@@ -19,9 +19,7 @@ impl EpaperDisplay {
     }
 
     pub fn init(&self) {
-        info!(
-            "epaper: init {EPD_WIDTH}x{EPD_HEIGHT} stub (SPI partial refresh — HIL pending)"
-        );
+        info!("epaper: init {EPD_WIDTH}x{EPD_HEIGHT} stub (SPI partial refresh — HIL pending)");
     }
 }
 

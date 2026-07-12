@@ -1,4 +1,4 @@
-//! Offline dev harness — scripted demo against mock BSP (no ESP32).
+//! Regression test for `zoop-sim` scripted record → tag flow.
 
 use zoop_core::app::App;
 use zoop_core::buttons::ButtonPoller;
@@ -16,8 +16,9 @@ fn advance(
     app.tick(buttons, clock).expect("tick");
 }
 
-fn main() {
-    let storage = MockStorage::new().expect("temp storage");
+#[test]
+fn sim_record_hold_and_tag_save() {
+    let storage = MockStorage::new().expect("storage");
     let mut display = MockDisplay::new();
     let mut audio = MockAudio::new();
     let mut buttons = ButtonPoller::new(MockButtons::default());
@@ -38,10 +39,7 @@ fn main() {
         &mut index,
         &mut tags,
     );
-
-    println!("=== Zoop sim (host) ===");
     app.boot(&clock).expect("boot");
-    println!("Boot state: {:?}", app.state.state());
 
     let mut t = 0u64;
 
@@ -54,14 +52,16 @@ fn main() {
     buttons.pins_mut().pwr = false;
     t += 50;
     advance(&mut clock, &mut buttons, &mut app, t);
-    println!("After PWR tap: {:?}", app.state.state());
+    assert_eq!(app.state.state(), AppState::Menu);
 
-    // Hold REC ≥350 ms + record ≥500 ms before release
+    // Hold REC long enough to start recording and capture ≥500 ms audio
     buttons.pins_mut().rec = true;
     for _ in 0..35 {
         t += 50;
         advance(&mut clock, &mut buttons, &mut app, t);
     }
+    assert_eq!(app.state.state(), AppState::Recording);
+
     buttons.pins_mut().rec = false;
     for _ in 0..12 {
         t += 100;
@@ -70,36 +70,26 @@ fn main() {
             break;
         }
     }
-    println!(
-        "After record: {:?}, notes={}",
-        app.state.state(),
-        app.index.len()
-    );
+    assert_eq!(app.state.state(), AppState::TagSelect);
 
-    if app.state.state() == AppState::TagSelect {
-        buttons.pins_mut().rec = true;
-        for _ in 0..15 {
+    // Save tag (hold REC until Idle)
+    buttons.pins_mut().rec = true;
+    for _ in 0..15 {
+        t += 50;
+        advance(&mut clock, &mut buttons, &mut app, t);
+        if app.state.state() == AppState::Idle {
+            buttons.pins_mut().rec = false;
+            break;
+        }
+    }
+    if app.state.state() != AppState::Idle {
+        buttons.pins_mut().rec = false;
+        for _ in 0..10 {
             t += 50;
             advance(&mut clock, &mut buttons, &mut app, t);
-            if app.state.state() == AppState::Idle {
-                buttons.pins_mut().rec = false;
-                break;
-            }
         }
-        if app.state.state() != AppState::Idle {
-            buttons.pins_mut().rec = false;
-            for _ in 0..10 {
-                t += 50;
-                advance(&mut clock, &mut buttons, &mut app, t);
-            }
-        }
-        println!(
-            "After tag save: {:?}, notes={}",
-            app.state.state(),
-            app.index.len()
-        );
     }
 
-    println!("Display flushes: {}", display.flush_count);
-    println!("Done. Run `cargo test` for full verification.");
+    assert_eq!(app.state.state(), AppState::Idle);
+    assert_eq!(app.index.len(), 1, "note should be in index after tag save");
 }

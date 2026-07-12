@@ -1,33 +1,44 @@
 //! SD card storage adapter — FAT32 via ESP-IDF VFS (stub until mount wired).
 
-use log::warn;
+use log::{info, warn};
 use zoop_core::error::{CoreError, CoreResult};
 use zoop_core::storage::FileStorage;
 
-use crate::board::config::SD_MOUNT;
+use crate::board::config::{INDEX_FILE, NOTES_DIR, SD_CLK, SD_CMD, SD_D0, SD_MOUNT, TAG_FILE};
 
-pub struct SdStorage;
+pub struct SdStorage {
+    mounted: bool,
+}
 
 impl SdStorage {
     pub fn mount() -> CoreResult<Self> {
-        warn!("sd: mount at {SD_MOUNT} (stub — HIL pending)");
-        Ok(Self)
+        info!(
+            "sd: mount stub at {SD_MOUNT}{NOTES_DIR} (CLK={SD_CLK} CMD={SD_CMD} D0={SD_D0} — HIL pending)"
+        );
+        Ok(Self { mounted: false })
     }
 }
 
 impl FileStorage for SdStorage {
     fn read_to_string(&self, path: &str) -> CoreResult<Option<String>> {
-        let _ = path;
-        Err(CoreError::Storage("SD not mounted (stub)".into()))
+        if !self.mounted {
+            let _ = path;
+            return Ok(None);
+        }
+        Err(CoreError::Storage("SD read not implemented (stub)".into()))
     }
 
     fn read_bytes(&self, path: &str) -> CoreResult<Option<Vec<u8>>> {
-        let _ = path;
-        Err(CoreError::Storage("SD not mounted (stub)".into()))
+        if !self.mounted {
+            let _ = path;
+            return Ok(None);
+        }
+        Err(CoreError::Storage("SD read not implemented (stub)".into()))
     }
 
     fn write_bytes(&self, path: &str, data: &[u8]) -> CoreResult<()> {
-        let _ = (path, data);
+        warn!("sd: write stub {path} ({} bytes)", data.len());
+        let _ = (INDEX_FILE, TAG_FILE);
         Err(CoreError::Storage("SD not mounted (stub)".into()))
     }
 

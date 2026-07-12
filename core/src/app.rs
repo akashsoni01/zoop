@@ -107,9 +107,7 @@ where
         buttons: &mut ButtonPoller<B>,
         now_ms: u64,
     ) -> CoreResult<()> {
-        if self.state.state() == AppState::Idle
-            && buttons.idle_rec_hold_started(now_ms)
-        {
+        if self.state.state() == AppState::Idle && buttons.idle_rec_hold_started(now_ms) {
             self.start_record(now_ms)?;
             return Ok(());
         }
@@ -450,11 +448,25 @@ mod tests {
 
     #[test]
     fn boot_loads_stores_and_renders_idle() {
-        let (storage, mut display, mut audio, _buttons, clock, mut time, mut adc, mut index, mut tags) =
-            test_app();
+        let (
+            storage,
+            mut display,
+            mut audio,
+            _buttons,
+            clock,
+            mut time,
+            mut adc,
+            mut index,
+            mut tags,
+        ) = test_app();
         let mut app = App::new(
-            &storage, &mut display, &mut audio, &mut time, &mut adc,
-            &mut index, &mut tags,
+            &storage,
+            &mut display,
+            &mut audio,
+            &mut time,
+            &mut adc,
+            &mut index,
+            &mut tags,
         );
         app.boot(&clock).expect("boot");
         assert_eq!(app.state.state(), AppState::Idle);

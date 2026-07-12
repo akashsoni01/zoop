@@ -266,6 +266,7 @@ pub struct MockFileRegistry {
 
 impl MockFileRegistry {
     pub fn insert_str(&mut self, path: &str, content: &str) {
-        self.files.insert(path.to_string(), content.as_bytes().to_vec());
+        self.files
+            .insert(path.to_string(), content.as_bytes().to_vec());
     }
 }
