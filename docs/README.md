@@ -4,6 +4,12 @@ Per-file reference for the Zoop workspace. Each page documents path, purpose, ar
 
 **Start with the system map:** [architecture.md](architecture.md) — host vs device crates, offline record flow, sync/portal flow, and the full state machine.
 
+**See / review the E-Ink UI:** [core/ui-capabilities.md](core/ui-capabilities.md) — screen catalog, drawing capabilities, and `zoop-ui-preview`.
+
+```bash
+cargo run -p zoop-core --bin zoop-ui-preview   # opens target/ui-preview/index.html
+```
+
 ## Architecture at a glance
 
 ```mermaid
@@ -11,6 +17,7 @@ flowchart TB
   subgraph Host["Host — cargo test"]
     CORE["zoop-core"]
     SIM["zoop-sim"]
+    UIPREV["zoop-ui-preview"]
     TESTS["tests"]
   end
   subgraph Device["ESP32-S3"]
@@ -19,6 +26,7 @@ flowchart TB
     BSP["BSP stubs → HIL"]
   end
   SIM --> CORE
+  UIPREV --> CORE
   TESTS --> CORE
   MAIN --> ENGINE
   ENGINE --> CORE
@@ -31,14 +39,18 @@ Full diagrams: [architecture.md](architecture.md).
 
 1. Start here for the table of contents.
 2. Open a crate overview: [core/](core/README.md) or [firmware/](firmware/README.md).
-3. Open a module README (e.g. [core/display/](core/display/README.md)), then a file page (e.g. [core/display/ui.md](core/display/ui.md)).
-4. Build/CI config lives under [config/](config/README.md).
+3. **UI:** [core/ui-capabilities.md](core/ui-capabilities.md) → [core/display/](core/display/README.md).
+4. Open a module README (e.g. [core/display/](core/display/README.md)), then a file page (e.g. [core/display/ui.md](core/display/ui.md)).
+5. Build/CI config lives under [config/](config/README.md).
 
 **Statuses:** *Host-verified* = covered by `cargo test` on CI. *HIL stub* = firmware compiles; hardware path pending. *Build-time* = compile/config only.
 
 ```bash
 # Host logic
 cargo test --workspace --exclude zoop-firmware
+
+# Visual UI gallery (no board)
+cargo run -p zoop-core --bin zoop-ui-preview
 
 # Firmware (needs esp toolchain)
 cd firmware && cargo build
@@ -50,7 +62,7 @@ cd firmware && cargo build
 
 ## Core (`zoop-core`)
 
-Overview: [core/README.md](core/README.md)
+Overview: [core/README.md](core/README.md) · **UI capabilities:** [core/ui-capabilities.md](core/ui-capabilities.md)
 
 ### Root modules
 
@@ -112,6 +124,8 @@ Overview: [core/storage/README.md](core/storage/README.md)
 
 | Doc | Source |
 |-----|--------|
+| [ui-capabilities.md](core/ui-capabilities.md) | Screen catalog + preview guide |
+| [zoop_ui_preview.md](core/bin/zoop_ui_preview.md) | `core/src/bin/zoop_ui_preview.rs` |
 | [zoop_sim.md](core/bin/zoop_sim.md) | `core/src/bin/zoop_sim.rs` |
 | [tests/README.md](core/tests/README.md) | `core/tests/` |
 | [integration_offline.md](core/tests/integration_offline.md) | `core/tests/integration_offline.rs` |

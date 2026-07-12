@@ -54,4 +54,4 @@ Host-verified (manual + integration).
 
 ## Related
 
-[../tests/zoop_sim_flow.md](../tests/zoop_sim_flow.md), [../app.md](../app.md), [../../architecture.md](../../architecture.md)
+[../tests/zoop_sim_flow.md](../tests/zoop_sim_flow.md), [../app.md](../app.md), [zoop_ui_preview.md](zoop_ui_preview.md), [../ui-capabilities.md](../ui-capabilities.md), [../../architecture.md](../../architecture.md)

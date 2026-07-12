@@ -32,10 +32,10 @@ System-wide diagrams: [architecture.md](../architecture.md).
 | Input / power | [buttons.md](buttons.md), [battery.md](battery.md), [power.md](power.md), [sleep.md](sleep.md), [sounds.md](sounds.md) |
 | Media | [record.md](record.md), [wav.md](wav.md), [paths.md](paths.md) |
 | Time / STT | [time.md](time.md), [transcribe.md](transcribe.md), [whisper_parse.md](whisper_parse.md), [portal_fmt.md](portal_fmt.md) |
-| Display | [display/](display/) |
+| Display | [display/](display/), **[ui-capabilities.md](ui-capabilities.md)** |
 | Network | [network/](network/) |
 | Storage | [storage/](storage/) |
-| Bin / tests | [bin/zoop_sim.md](bin/zoop_sim.md), [tests/](tests/) |
+| Bin / tests | [bin/zoop_ui_preview.md](bin/zoop_ui_preview.md), [bin/zoop_sim.md](bin/zoop_sim.md), [tests/](tests/) |
 
 ## How components interact
 

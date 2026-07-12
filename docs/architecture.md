@@ -167,6 +167,7 @@ flowchart LR
 | Topic | Doc |
 |-------|-----|
 | Host logic overview | [core/README.md](core/README.md) |
+| **E-Ink UI capabilities + preview** | [core/ui-capabilities.md](core/ui-capabilities.md) |
 | Firmware BSP overview | [firmware/README.md](firmware/README.md) |
 | Build / CI | [config/README.md](config/README.md) |
 | File index | [README.md](README.md) |

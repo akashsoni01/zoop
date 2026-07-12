@@ -5,7 +5,8 @@ Small **Palma Notes**–style voice notepad on the Waveshare ESP32-S3 e-Paper bo
 - **Reference firmware (C/Arduino):** [`pala_note/`](./pala_note/) — v1.0, 2026-05-24  
 - **Rust IoT port (in progress):** see [`TODO.md`](./TODO.md)  
 - **Per-file API docs:** [`docs/`](./docs/README.md)  
-- **Architecture diagrams:** [`docs/architecture.md`](./docs/architecture.md)
+- **Architecture diagrams:** [`docs/architecture.md`](./docs/architecture.md)  
+- **UI capabilities + preview:** [`docs/core/ui-capabilities.md`](./docs/core/ui-capabilities.md)
 
 ---
 
@@ -363,6 +364,7 @@ Implementation tracked in [`TODO.md`](./TODO.md) Phase 3+; transport choice shou
 ```
 zoop/
   docs/              # Per-file API docs — start at docs/README.md
+                     #   UI: docs/core/ui-capabilities.md
   core/              # Host-testable logic — `cargo test` on Mac
   firmware/          # ESP32-S3 binary — `cargo build` / `cargo espflash`
   README.md          ← you are here
@@ -391,6 +393,7 @@ cargo test
 | --- | --- | --- |
 | Unit + integration | `cd core && cargo test` | Storage, WAV, buttons, sleep, UI framebuffer, portal routes, Whisper mock, record→tag→delete loop |
 | Lint | `cd core && cargo clippy -- -D warnings` | Production-grade core crate |
+| **UI visual gallery** | `cargo run -p zoop-core --bin zoop-ui-preview` | Renders all 16 e-Paper screens → opens `target/ui-preview/index.html` |
 | Offline simulator | `cd core && cargo run --bin zoop-sim` | Scripted demo against `MockStorage` + mock display |
 | Firmware compile | `cd firmware && . ~/export-esp.sh && cargo build` | ESP32-S3 binary links (BSP stubs log over UART) |
 

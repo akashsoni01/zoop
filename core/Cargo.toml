@@ -9,6 +9,10 @@ description = "Host-testable core logic for Zoop (storage, WAV, battery, state)"
 name = "zoop-sim"
 path = "src/bin/zoop_sim.rs"
 
+[[bin]]
+name = "zoop-ui-preview"
+path = "src/bin/zoop_ui_preview.rs"
+
 [dependencies]
 thiserror = "2"
 tempfile = "3"

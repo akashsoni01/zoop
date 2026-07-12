@@ -50,6 +50,12 @@ cargo test -p zoop-core display::draw::tests
 
 Host-verified.
 
+## Font capabilities
+
+- Full **A–Z**, **0–9**, and punctuation: `. : - % # / ? ! + = _`
+- Lowercase characters are mapped to uppercase when drawing
+- Glyph size: 5×7 pixels (+ 1 px spacing)
+
 ## Related
 
-[ui.md](ui.md), [../../architecture.md](../../architecture.md)
+[ui.md](ui.md) · [../ui-capabilities.md](../ui-capabilities.md) · [../bin/zoop_ui_preview.md](../bin/zoop_ui_preview.md) · [../../architecture.md](../../architecture.md)
