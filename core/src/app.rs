@@ -380,14 +380,40 @@ where
             .map(|e| e.tag.clone())
             .unwrap_or_default();
 
+        let merchant = "Akash Soni";
+        let vpa = "akash@oksbi";
+        let amount = "100.00";
+        let upi_uri = crate::upi::build_upi_uri(vpa, merchant, amount, "Zoop Pay");
+        let history: Vec<String> = self
+            .index
+            .entries()
+            .iter()
+            .rev()
+            .take(8)
+            .map(|e| format!("#{:03}  {}", e.num, e.tag))
+            .collect();
+
         let buf = self.display.framebuffer_mut();
         let mut ui = UiContext {
             buf,
             battery_pct: pct,
             firmware_version: FIRMWARE_VERSION,
-            note_count: self.index.len(),
+            merchant_name: merchant,
+            upi_vpa: vpa,
+            amount_inr: amount,
+            upi_uri: &upi_uri,
+            txn_note: "order",
+            txn_count: self.index.len(),
             menu_index: self.menu_index,
             settings_index: self.settings_index,
+            history_index: 0,
+            history_lines: &history,
+            error_msg: &error_msg,
+            device_rtc: "time not set",
+            sounds_on: self.sounds.enabled,
+            sync_done: 0,
+            sync_pending: 0,
+            note_count: self.index.len(),
             tag_index: self.tag_index,
             tags: self.tags.tags(),
             list_filter: &self.list_filter,
@@ -396,12 +422,9 @@ where
             detail_tag: &detail_tag,
             detail_lines: &[],
             detail_page: self.detail_page,
-            error_msg: &error_msg,
-            device_rtc: "time not set",
             transfer_ip: &self.transfer_ip,
             transcribe_done: 0,
             transcribe_pending: 0,
-            sounds_on: self.sounds.enabled,
         };
 
         self.last_screen = if warn {

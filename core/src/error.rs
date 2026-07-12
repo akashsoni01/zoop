@@ -25,4 +25,6 @@ pub enum CoreError {
     },
     #[error("invalid meta: {0}")]
     InvalidMeta(String),
+    #[error("{0}")]
+    Other(String),
 }

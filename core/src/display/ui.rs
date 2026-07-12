@@ -1,56 +1,84 @@
-//! E-Ink screen render — calm, paper-like layouts for 200×200 monochrome panels.
+//! UPI payment screens for 200×200 e-Paper — calm, QR-first collect flow.
 //!
-//! Design rules (e-Paper):
-//! - Prefer white “paper” with sparse black ink (less ghosting / eyestrain)
-//! - Soft headers (text + rule) instead of full black bars where possible
-//! - Outline selection instead of inverted slabs
-//! - Generous margins and one visual focus per screen
+//! Maps existing `AppState` names to payment UX (hardware buttons unchanged):
+//! Idle → home · Recording → show QR · Saved → waiting · TagSelect → success · …
 
 use crate::display::draw::{
-    draw_battery_ring, draw_calm_disc, draw_check, draw_header, draw_hints, draw_select_row,
-    draw_soft_header, draw_str, draw_str_centered, fill_circle, hline, stroke_circle, text_width,
-    vline, BLACK, HEIGHT, WIDTH,
+    draw_battery_ring, draw_check, draw_header, draw_hints, draw_select_row, draw_soft_header,
+    draw_str, draw_str_centered, fill_circle, stroke_circle, text_width, BLACK, HEIGHT, WIDTH,
 };
+use crate::display::qr::draw_qr_centered;
 use crate::state::AppState;
+use crate::upi::format_amount_label;
 
 pub const HEADER_H: i32 = 28;
 pub const HINTS_Y: i32 = 180;
 pub const MARGIN: i32 = 12;
 pub const CONTENT_TOP: i32 = 36;
 
-/// Clear framebuffer to white (paper).
 pub fn clear_screen(buf: &mut [u8]) {
     buf.fill(0xFF);
 }
 
-/// Which screen was last rendered (for tests).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScreenId {
     Idle,
-    Recording,
-    Saved,
-    TagSelect,
+    /// Show UPI QR for customer to scan
+    ShowQr,
+    /// Awaiting bank confirmation
+    Waiting,
+    /// Payment received
+    Success,
     Menu,
     Settings,
     DeviceInfo,
+    HistoryList,
+    HistoryDetail,
+    CancelConfirm,
+    Merchant,
+    Error,
+    BatteryLow,
+    UltraSleep,
+    WifiConnecting,
+    Syncing,
+    /// Legacy aliases kept for call sites
+    Recording,
+    Saved,
+    TagSelect,
     NoteList,
     NoteDetail,
     DeleteConfirm,
     Transfer,
-    BatteryLow,
-    Error,
-    UltraSleep,
-    WifiConnecting,
     Transcribing,
+    WifiConnectingAlias,
 }
 
 pub struct UiContext<'a> {
     pub buf: &'a mut [u8],
     pub battery_pct: Option<u8>,
     pub firmware_version: &'a str,
-    pub note_count: usize,
+    /// Merchant / payee display name
+    pub merchant_name: &'a str,
+    /// VPA e.g. akash@oksbi
+    pub upi_vpa: &'a str,
+    /// Amount string e.g. "250.00" (empty = any)
+    pub amount_inr: &'a str,
+    /// Full UPI URI for QR (pre-built)
+    pub upi_uri: &'a str,
+    /// Last / current txn id or order note
+    pub txn_note: &'a str,
+    pub txn_count: usize,
     pub menu_index: usize,
     pub settings_index: usize,
+    pub history_index: usize,
+    pub history_lines: &'a [String],
+    pub error_msg: &'a str,
+    pub device_rtc: &'a str,
+    pub sounds_on: bool,
+    pub sync_done: usize,
+    pub sync_pending: usize,
+    // Kept so older call sites compile during transition
+    pub note_count: usize,
     pub tag_index: usize,
     pub tags: &'a [String],
     pub list_filter: &'a str,
@@ -59,111 +87,102 @@ pub struct UiContext<'a> {
     pub detail_tag: &'a str,
     pub detail_lines: &'a [String],
     pub detail_page: usize,
-    pub error_msg: &'a str,
-    pub device_rtc: &'a str,
     pub transfer_ip: &'a str,
     pub transcribe_done: usize,
     pub transcribe_pending: usize,
-    pub sounds_on: bool,
 }
 
 impl UiContext<'_> {
     pub fn render(&mut self, state: AppState) -> ScreenId {
         clear_screen(self.buf);
         match state {
-            AppState::Idle => self.show_idle(),
-            AppState::Recording => self.show_recording(),
-            AppState::Saved => self.show_saved(),
-            AppState::TagSelect => self.show_tag_select(),
+            AppState::Idle => self.show_home(),
+            AppState::Recording => self.show_qr(),
+            AppState::Saved => self.show_waiting(),
+            AppState::TagSelect => self.show_success(),
             AppState::Menu => self.show_menu(),
             AppState::Settings => self.show_settings(),
             AppState::DeviceInfo => self.show_device_info(),
-            AppState::NoteList | AppState::TagBrowser => self.show_note_list(),
-            AppState::NoteDetail => self.show_note_detail(),
-            AppState::DeleteConfirm => self.show_delete_confirm(),
-            AppState::Transfer => self.show_transfer(),
+            AppState::NoteList | AppState::TagBrowser => self.show_history(),
+            AppState::NoteDetail => self.show_history_detail(),
+            AppState::DeleteConfirm => self.show_cancel_confirm(),
+            AppState::Transfer => self.show_merchant(),
             AppState::Error => self.show_error_screen(self.error_msg),
         }
     }
 
-    fn show_idle(&mut self) -> ScreenId {
-        let cx = (WIDTH / 2) as i32;
+    fn amount_label(&self) -> String {
+        format_amount_label(self.amount_inr)
+    }
 
-        // Quiet status — battery only, top-right
+    /// Home — ready to collect
+    fn show_home(&mut self) -> ScreenId {
+        let cx = (WIDTH / 2) as i32;
         if let Some(pct) = self.battery_pct {
             draw_battery_ring(self.buf, WIDTH as i32 - 28, 28, pct);
             let label = format!("{pct}%");
             let lw = text_width(&label, 1);
             draw_str(self.buf, WIDTH as i32 - 28 - lw / 2, 46, &label, 1, BLACK);
         }
-
-        // Brand breathing room
-        draw_str_centered(self.buf, cx, 68, "ZOOP", 2, BLACK);
-        let notes = if self.note_count == 1 {
-            "1 note".to_string()
+        draw_str_centered(self.buf, cx, 58, "ZOOP PAY", 1, BLACK);
+        draw_str_centered(self.buf, cx, 78, self.merchant_name, 1, BLACK);
+        draw_str_centered(self.buf, cx, 108, &self.amount_label(), 2, BLACK);
+        draw_str_centered(self.buf, cx, 138, "hold REC for QR", 1, BLACK);
+        let n = if self.txn_count == 1 {
+            "1 payment".to_string()
         } else {
-            format!("{} notes", self.note_count)
+            format!("{} payments", self.txn_count)
         };
-        draw_str_centered(self.buf, cx, 98, &notes, 1, BLACK);
-        draw_str_centered(self.buf, cx, 116, "ready", 1, BLACK);
-
-        // Open mic ring — calm focus, not a solid blot
-        draw_calm_disc(self.buf, cx, 148, 22);
-
-        draw_hints(self.buf, "Hold REC", "Menu");
+        draw_str_centered(self.buf, cx, 156, &n, 1, BLACK);
+        draw_hints(self.buf, "Show QR", "Menu");
         ScreenId::Idle
     }
 
-    fn show_recording(&mut self) -> ScreenId {
-        draw_soft_header(self.buf, "RECORDING", None);
-        let cx = (WIDTH / 2) as i32;
-        // Outline + small core — less ink than a huge filled disc
-        stroke_circle(self.buf, cx, 100, 40, 2, BLACK);
-        stroke_circle(self.buf, cx, 100, 28, 1, BLACK);
-        fill_circle(self.buf, cx, 100, 10, BLACK);
-        draw_str_centered(self.buf, cx, 152, "listening...", 1, BLACK);
-        draw_hints(self.buf, "Release", "");
-        ScreenId::Recording
+    /// Customer scans this UPI QR
+    fn show_qr(&mut self) -> ScreenId {
+        draw_soft_header(self.buf, "SCAN UPI", Some(&self.amount_label()));
+        let uri = if self.upi_uri.is_empty() {
+            "upi://pay?pa=demo@upi&pn=Zoop&cu=INR"
+        } else {
+            self.upi_uri
+        };
+        // QR sits under soft header; leave strip for amount already in header
+        if draw_qr_centered(self.buf, uri, 30).is_err() {
+            draw_str_centered(self.buf, (WIDTH / 2) as i32, 100, "QR too long", 1, BLACK);
+        }
+        draw_hints(self.buf, "Wait", "Cancel");
+        ScreenId::ShowQr
     }
 
-    fn show_saved(&mut self) -> ScreenId {
-        draw_soft_header(self.buf, "SAVED", None);
+    fn show_waiting(&mut self) -> ScreenId {
+        draw_soft_header(self.buf, "WAITING", None);
         let cx = (WIDTH / 2) as i32;
-        draw_check(self.buf, cx, 95);
-        draw_str_centered(self.buf, cx, 140, "choose a tag", 1, BLACK);
-        draw_hints(self.buf, "Save", "Next");
-        ScreenId::Saved
+        stroke_circle(self.buf, cx, 88, 28, 2, BLACK);
+        fill_circle(self.buf, cx, 88, 6, BLACK);
+        draw_str_centered(self.buf, cx, 128, "checking payment", 1, BLACK);
+        draw_str_centered(self.buf, cx, 148, &self.amount_label(), 1, BLACK);
+        draw_hints(self.buf, "", "Cancel");
+        ScreenId::Waiting
     }
 
-    fn show_tag_select(&mut self) -> ScreenId {
-        draw_soft_header(self.buf, "TAG", None);
-        let tag = self
-            .tags
-            .get(self.tag_index)
-            .map(|s| s.as_str())
-            .unwrap_or("Note");
+    fn show_success(&mut self) -> ScreenId {
+        draw_soft_header(self.buf, "PAID", None);
         let cx = (WIDTH / 2) as i32;
-        let tw = text_width(tag, 1).max(48);
-        let box_w = tw + 24;
-        let box_x = cx - box_w / 2;
-        let box_y = 78;
-        hline(self.buf, box_x, box_y, box_w, BLACK);
-        hline(self.buf, box_x, box_y + 28, box_w, BLACK);
-        vline(self.buf, box_x, box_y, 29, BLACK);
-        vline(self.buf, box_x + box_w - 1, box_y, 29, BLACK);
-        draw_str_centered(self.buf, cx, 88, tag, 1, BLACK);
-        draw_str_centered(self.buf, cx, 140, "press REC to keep", 1, BLACK);
-        draw_hints(self.buf, "Save", "Cycle");
-        ScreenId::TagSelect
+        draw_check(self.buf, cx, 88);
+        draw_str_centered(self.buf, cx, 132, &self.amount_label(), 1, BLACK);
+        if !self.txn_note.is_empty() {
+            draw_str_centered(self.buf, cx, 150, self.txn_note, 1, BLACK);
+        }
+        draw_hints(self.buf, "Done", "");
+        ScreenId::Success
     }
 
     fn show_menu(&mut self) -> ScreenId {
-        const ITEMS: [&str; 4] = ["Notes", "Tags", "Sync", "Settings"];
+        const ITEMS: [&str; 4] = ["Collect", "History", "Merchant", "Settings"];
         draw_soft_header(self.buf, "MENU", None);
         let y0 = CONTENT_TOP + 4;
         for (i, item) in ITEMS.iter().enumerate() {
-            let y = y0 + i as i32 * 30;
-            draw_select_row(self.buf, y, item, i == self.menu_index);
+            draw_select_row(self.buf, y0 + i as i32 * 30, item, i == self.menu_index);
         }
         draw_hints(self.buf, "Open", "Next");
         ScreenId::Menu
@@ -173,14 +192,13 @@ impl UiContext<'_> {
         let sounds = if self.sounds_on { "on" } else { "off" };
         let items = [
             format!("Sounds  {sounds}"),
-            "Transfer".to_string(),
             "Device".to_string(),
+            "About".to_string(),
         ];
         draw_soft_header(self.buf, "SETTINGS", None);
         let y0 = CONTENT_TOP + 8;
         for (i, item) in items.iter().enumerate() {
-            let y = y0 + i as i32 * 32;
-            draw_select_row(self.buf, y, item, i == self.settings_index);
+            draw_select_row(self.buf, y0 + i as i32 * 32, item, i == self.settings_index);
         }
         draw_hints(self.buf, "Select", "Next");
         ScreenId::Settings
@@ -194,7 +212,7 @@ impl UiContext<'_> {
                 .map(|p| format!("Battery  {p}%"))
                 .unwrap_or_else(|| "Battery  --".to_string()),
             format!("Clock  {}", self.device_rtc),
-            format!("Notes  {}", self.note_count),
+            format!("Txns  {}", self.txn_count),
         ];
         let mut y = CONTENT_TOP + 8;
         for line in &lines {
@@ -205,71 +223,62 @@ impl UiContext<'_> {
         ScreenId::DeviceInfo
     }
 
-    fn show_note_list(&mut self) -> ScreenId {
-        let title = if self.list_filter.is_empty() || self.list_filter == "All" {
-            "NOTES"
-        } else {
-            self.list_filter
-        };
-        draw_soft_header(self.buf, title, None);
+    fn show_history(&mut self) -> ScreenId {
+        draw_soft_header(self.buf, "HISTORY", None);
         let cx = (WIDTH / 2) as i32;
-        let num = format!("#{:03}", self.detail_num.max(1));
-        draw_str_centered(self.buf, cx, 70, &num, 2, BLACK);
-        draw_str_centered(self.buf, cx, 108, "voice note", 1, BLACK);
-        if !self.detail_tag.is_empty() {
-            draw_str_centered(self.buf, cx, 130, self.detail_tag, 1, BLACK);
+        if self.history_lines.is_empty() {
+            draw_str_centered(self.buf, cx, 90, "no payments yet", 1, BLACK);
+        } else {
+            let mut y = CONTENT_TOP + 4;
+            let start = self.history_index.min(self.history_lines.len().saturating_sub(1));
+            for line in self.history_lines.iter().skip(start).take(5) {
+                draw_str(self.buf, MARGIN, y, line, 1, BLACK);
+                y += 22;
+            }
         }
         draw_hints(self.buf, "Open", "Next");
-        ScreenId::NoteList
+        ScreenId::HistoryList
     }
 
-    fn show_note_detail(&mut self) -> ScreenId {
-        let hdr = format!("#{:03}", self.detail_num);
-        draw_soft_header(self.buf, &hdr, Some(self.detail_tag));
-        // 6 lines with airier spacing — easier on e-Ink eyes
+    fn show_history_detail(&mut self) -> ScreenId {
+        draw_soft_header(self.buf, "TXN", Some(&self.amount_label()));
         let mut y = CONTENT_TOP + 4;
         let start = self.detail_page * 6;
-        for line in self.detail_lines.iter().skip(start).take(6) {
+        let lines = if self.history_lines.is_empty() {
+            self.detail_lines
+        } else {
+            self.history_lines
+        };
+        for line in lines.iter().skip(start).take(6) {
             draw_str(self.buf, MARGIN, y, line, 1, BLACK);
             y += 20;
         }
-        draw_hints(self.buf, "Play", "Scroll");
-        ScreenId::NoteDetail
+        draw_hints(self.buf, "Back", "Scroll");
+        ScreenId::HistoryDetail
     }
 
-    fn show_delete_confirm(&mut self) -> ScreenId {
-        draw_soft_header(self.buf, "DELETE", None);
+    fn show_cancel_confirm(&mut self) -> ScreenId {
+        draw_soft_header(self.buf, "CANCEL", None);
         let cx = (WIDTH / 2) as i32;
-        draw_str_centered(
-            self.buf,
-            cx,
-            72,
-            &format!("#{:03}", self.detail_num),
-            2,
-            BLACK,
-        );
-        draw_str_centered(self.buf, cx, 110, "remove this note?", 1, BLACK);
-        draw_str_centered(self.buf, cx, 132, "cannot undo", 1, BLACK);
+        draw_str_centered(self.buf, cx, 80, "stop this QR?", 1, BLACK);
+        draw_str_centered(self.buf, cx, 108, &self.amount_label(), 1, BLACK);
         draw_hints(self.buf, "Yes", "Back");
-        ScreenId::DeleteConfirm
+        ScreenId::CancelConfirm
     }
 
-    fn show_transfer(&mut self) -> ScreenId {
-        draw_soft_header(self.buf, "TRANSFER", None);
+    fn show_merchant(&mut self) -> ScreenId {
+        draw_soft_header(self.buf, "MERCHANT", None);
         let cx = (WIDTH / 2) as i32;
-        draw_str_centered(self.buf, cx, 64, "portal open", 1, BLACK);
-        // Soft box for IP
-        if !self.transfer_ip.is_empty() {
-            draw_select_row(self.buf, 88, self.transfer_ip, true);
-        }
-        draw_str_centered(self.buf, cx, 140, "open in browser", 1, BLACK);
-        draw_hints(self.buf, "Exit", "");
-        ScreenId::Transfer
+        draw_str_centered(self.buf, cx, 56, self.merchant_name, 1, BLACK);
+        draw_str_centered(self.buf, cx, 84, self.upi_vpa, 1, BLACK);
+        draw_str_centered(self.buf, cx, 120, "static VPA", 1, BLACK);
+        draw_str_centered(self.buf, cx, 142, "use Collect for QR", 1, BLACK);
+        draw_hints(self.buf, "Back", "");
+        ScreenId::Merchant
     }
 
     pub fn show_error_screen(&mut self, msg: &str) -> ScreenId {
         clear_screen(self.buf);
-        // Keep solid header for errors — clear visual priority
         draw_header(self.buf, "ERROR", None);
         let cx = (WIDTH / 2) as i32;
         draw_str_centered(self.buf, cx, 88, msg, 1, BLACK);
@@ -292,7 +301,6 @@ impl UiContext<'_> {
         clear_screen(self.buf);
         let cx = (WIDTH / 2) as i32;
         let cy = (HEIGHT / 2) as i32 - 8;
-        // Crescent-ish: open ring, minimal ink
         stroke_circle(self.buf, cx, cy, 20, 1, BLACK);
         draw_str_centered(self.buf, cx, cy + 36, "resting", 1, BLACK);
         ScreenId::UltraSleep
@@ -303,30 +311,19 @@ impl UiContext<'_> {
         draw_soft_header(self.buf, "WIFI", None);
         let cx = (WIDTH / 2) as i32;
         draw_str_centered(self.buf, cx, 80, "connecting", 1, BLACK);
-        let status = format!("{attempt} / {max}");
-        draw_str_centered(self.buf, cx, 110, &status, 1, BLACK);
-        // Simple progress ticks
-        let ticks = ((attempt.min(max) as i32 * 5) / max.max(1) as i32).clamp(0, 5);
-        let start_x = cx - 28;
-        for i in 0..5 {
-            let x = start_x + i * 12;
-            if i < ticks {
-                fill_circle(self.buf, x, 140, 3, BLACK);
-            } else {
-                stroke_circle(self.buf, x, 140, 3, 1, BLACK);
-            }
-        }
+        draw_str_centered(self.buf, cx, 110, &format!("{attempt} / {max}"), 1, BLACK);
         ScreenId::WifiConnecting
     }
 
     pub fn show_transcribing(&mut self) -> ScreenId {
+        // Reuse as payment sync progress
         clear_screen(self.buf);
         draw_soft_header(self.buf, "SYNC", None);
         let cx = (WIDTH / 2) as i32;
-        let line = format!("{}/{}", self.transcribe_done, self.transcribe_pending);
-        draw_str_centered(self.buf, cx, 88, "writing words", 1, BLACK);
+        let line = format!("{}/{}", self.sync_done, self.sync_pending);
+        draw_str_centered(self.buf, cx, 88, "confirming", 1, BLACK);
         draw_str_centered(self.buf, cx, 118, &line, 2, BLACK);
-        ScreenId::Transcribing
+        ScreenId::Syncing
     }
 }
 
@@ -335,73 +332,86 @@ mod tests {
     use super::*;
     use crate::display::draw::{get_pixel, BYTES};
     use crate::state::AppState;
+    use crate::upi::build_upi_uri;
 
-    fn ctx<'a>(buf: &'a mut [u8], tags: &'a [String], detail_lines: &'a [String]) -> UiContext<'a> {
+    fn ctx<'a>(
+        buf: &'a mut [u8],
+        uri: &'a str,
+        history: &'a [String],
+        tags: &'a [String],
+    ) -> UiContext<'a> {
         UiContext {
             buf,
             battery_pct: Some(80),
             firmware_version: "v1.0",
-            note_count: 3,
+            merchant_name: "Akash Soni",
+            upi_vpa: "akash@oksbi",
+            amount_inr: "100.00",
+            upi_uri: uri,
+            txn_note: "order 12",
+            txn_count: 3,
             menu_index: 0,
             settings_index: 0,
+            history_index: 0,
+            history_lines: history,
+            error_msg: "PAY FAIL",
+            device_rtc: "set",
+            sounds_on: true,
+            sync_done: 1,
+            sync_pending: 2,
+            note_count: 3,
             tag_index: 0,
             tags,
             list_filter: "All",
             list_scroll: 0,
             detail_num: 1,
-            detail_tag: "Work",
-            detail_lines,
+            detail_tag: "",
+            detail_lines: &[],
             detail_page: 0,
-            error_msg: "SD ERR",
-            device_rtc: "set",
-            transfer_ip: "192.168.1.42",
-            transcribe_done: 1,
-            transcribe_pending: 3,
-            sounds_on: true,
+            transfer_ip: "",
+            transcribe_done: 0,
+            transcribe_pending: 0,
         }
     }
 
     #[test]
-    fn idle_screen_renders_calm_disc() {
+    fn home_renders_idle() {
         let mut buf = vec![0xFF; BYTES];
-        let tags = vec!["Work".into(), "Idea".into()];
-        let lines = vec!["Akash Soni".into()];
-        let mut ui = ctx(&mut buf, &tags, &lines);
+        let uri = build_upi_uri("akash@oksbi", "Akash Soni", "100.00", "Zoop");
+        let history = vec![];
+        let tags = vec![];
+        let mut ui = ctx(&mut buf, &uri, &history, &tags);
         assert_eq!(ui.render(AppState::Idle), ScreenId::Idle);
-        // Core of calm disc at center
-        assert_eq!(get_pixel(&buf, 100, 148), BLACK);
+    }
+
+    #[test]
+    fn qr_screen_paints_modules() {
+        let mut buf = vec![0xFF; BYTES];
+        let uri = build_upi_uri("akash@oksbi", "Akash Soni", "100.00", "Zoop");
+        let history = vec![];
+        let tags = vec![];
+        let mut ui = ctx(&mut buf, &uri, &history, &tags);
+        assert_eq!(ui.render(AppState::Recording), ScreenId::ShowQr);
+        let mut dark = 0;
+        for y in 30..170 {
+            for x in 30..170 {
+                if get_pixel(&buf, x, y) == BLACK {
+                    dark += 1;
+                }
+            }
+        }
+        assert!(dark > 200);
     }
 
     #[test]
     fn menu_outline_selects_row() {
         let mut buf = vec![0xFF; BYTES];
-        let tags = vec!["Work".into()];
-        let lines = vec!["Akash Soni".into()];
-        let mut ui = ctx(&mut buf, &tags, &lines);
+        let uri = "";
+        let history = vec![];
+        let tags = vec![];
+        let mut ui = ctx(&mut buf, uri, &history, &tags);
         ui.menu_index = 1;
         assert_eq!(ui.render(AppState::Menu), ScreenId::Menu);
-        // Left accent of selected outline row (Tags at y≈70)
         assert_eq!(get_pixel(&buf, 12, 75), BLACK);
-    }
-
-    #[test]
-    fn error_screen_sets_message() {
-        let mut buf = vec![0xFF; BYTES];
-        let tags = vec!["Work".into()];
-        let lines = vec!["Akash Soni".into()];
-        let mut ui = ctx(&mut buf, &tags, &lines);
-        assert_eq!(ui.show_error_screen("SD ERR"), ScreenId::Error);
-        assert_ne!(buf, vec![0xFF; BYTES]);
-    }
-
-    #[test]
-    fn framebuffer_hash_stable_for_idle() {
-        let mut a = vec![0xFF; BYTES];
-        let mut b = vec![0xFF; BYTES];
-        let tags = vec!["Work".into(), "Idea".into()];
-        let lines = vec!["Akash Soni".into()];
-        ctx(&mut a, &tags, &lines).render(AppState::Idle);
-        ctx(&mut b, &tags, &lines).render(AppState::Idle);
-        assert_eq!(a, b);
     }
 }

@@ -16,5 +16,6 @@ path = "src/bin/zoop_ui_preview.rs"
 [dependencies]
 thiserror = "2"
 tempfile = "3"
+qrcode = { version = "0.14", default-features = false }
 
 [dev-dependencies]

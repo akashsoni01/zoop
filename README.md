@@ -6,7 +6,7 @@ Small **Palma Notes**–style voice notepad on the Waveshare ESP32-S3 e-Paper bo
 - **Rust IoT port (in progress):** see [`TODO.md`](./TODO.md)  
 - **Per-file API docs:** [`docs/`](./docs/README.md)  
 - **Architecture diagrams:** [`docs/architecture.md`](./docs/architecture.md)  
-- **UI capabilities + preview:** [`docs/core/ui-capabilities.md`](./docs/core/ui-capabilities.md)
+- **UI capabilities + UPI QR preview:** [`docs/core/ui-capabilities.md`](./docs/core/ui-capabilities.md)
 
 ---
 

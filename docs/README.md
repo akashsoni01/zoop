@@ -4,10 +4,10 @@ Per-file reference for the Zoop workspace. Each page documents path, purpose, ar
 
 **Start with the system map:** [architecture.md](architecture.md) — host vs device crates, offline record flow, sync/portal flow, and the full state machine.
 
-**See / review the E-Ink UI:** [core/ui-capabilities.md](core/ui-capabilities.md) — screen catalog, drawing capabilities, and `zoop-ui-preview`.
+**See / review the E-Ink UI:** [core/ui-capabilities.md](core/ui-capabilities.md) — **UPI payment screens**, QR on e-Ink, and `zoop-ui-preview`.
 
 ```bash
-cargo run -p zoop-core --bin zoop-ui-preview   # opens target/ui-preview/index.html
+cargo run -p zoop-core --bin zoop-ui-preview   # opens target/ui-preview/index.html (includes UPI QR)
 ```
 
 ## Architecture at a glance
@@ -85,6 +85,7 @@ Overview: [core/README.md](core/README.md) · **UI capabilities:** [core/ui-capa
 | [time.md](core/time.md) | `core/src/time.rs` |
 | [transcribe.md](core/transcribe.md) | `core/src/transcribe.rs` |
 | [wav.md](core/wav.md) | `core/src/wav.rs` |
+| [upi.md](core/upi.md) | `core/src/upi.rs` |
 | [whisper_parse.md](core/whisper_parse.md) | `core/src/whisper_parse.rs` |
 
 ### Display
@@ -96,6 +97,7 @@ Overview: [core/display/README.md](core/display/README.md)
 | [mod.md](core/display/mod.md) | `core/src/display/mod.rs` |
 | [draw.md](core/display/draw.md) | `core/src/display/draw.rs` |
 | [ui.md](core/display/ui.md) | `core/src/display/ui.rs` |
+| [qr.md](core/display/qr.md) | `core/src/display/qr.rs` |
 
 ### Network
 

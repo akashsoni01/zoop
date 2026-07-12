@@ -18,6 +18,7 @@ pub mod state;
 pub mod storage;
 pub mod time;
 pub mod transcribe;
+pub mod upi;
 pub mod wav;
 pub mod whisper_parse;
 
@@ -46,5 +47,5 @@ pub use transcribe::{
     parse_transcription_response, TranscribeError, TranscriptionConfig, TranscriptionProvider,
     CURSOR_HOST, DEFAULT_BOUNDARY, DEFAULT_MODEL, OPENAI_HOST, TRANSCRIPTION_PATH,
 };
-pub use wav::{parse_wav_header, WavHeader, SAMPLE_RATE};
+pub use upi::{build_upi_uri, format_amount_label};
 pub use whisper_parse::parse_whisper_text;
