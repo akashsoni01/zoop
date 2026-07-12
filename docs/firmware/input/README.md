@@ -1,8 +1,28 @@
-# Input (`firmware/src/input`)
+# Firmware input
 
-GPIO button levels wrapped by `zoop_core::ButtonPoller`.
+GPIO button adapters for REC (GPIO0) and PWR (GPIO18).
 
-| File | Doc |
-|------|-----|
-| `mod.rs` | [mod.md](mod.md) |
-| `buttons.rs` | [buttons.md](buttons.md) |
+## Component in architecture
+
+```mermaid
+flowchart LR
+  GPIO["GPIO REC/PWR"]
+  GB["GpioButtons HIL stub"]
+  POLL["ButtonPoller"]
+  APP["App::tick"]
+  GPIO -.-> GB --> POLL --> APP
+  style GB fill:#f96,stroke:#333,stroke-width:3px
+```
+
+[architecture.md](../../architecture.md).
+
+## Child docs
+
+| Doc | Source |
+|-----|--------|
+| [mod.md](mod.md) | `mod.rs` |
+| [buttons.md](buttons.md) | `buttons.rs` |
+
+## Status
+
+HIL stub (reads return false).

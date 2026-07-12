@@ -4,7 +4,8 @@ Small **Palma Notes**–style voice notepad on the Waveshare ESP32-S3 e-Paper bo
 
 - **Reference firmware (C/Arduino):** [`pala_note/`](./pala_note/) — v1.0, 2026-05-24  
 - **Rust IoT port (in progress):** see [`TODO.md`](./TODO.md)  
-- **Per-file API docs:** [`docs/`](./docs/README.md)
+- **Per-file API docs:** [`docs/`](./docs/README.md)  
+- **Architecture diagrams:** [`docs/architecture.md`](./docs/architecture.md)
 
 ---
 

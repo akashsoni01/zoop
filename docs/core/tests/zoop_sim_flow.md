@@ -1,10 +1,42 @@
 # tests/zoop_sim_flow.rs
 
 - **Path:** `core/tests/zoop_sim_flow.rs`
-- **Purpose:** Regression test for the `zoop-sim` scripted record → tag save flow.
-- **Key types / functions:**
-  - Test `sim_record_hold_and_tag_save`
-- **Dependencies:** `zoop_core` app/mock/storage/state
-- **Tests:** `cargo test -p zoop-core --test zoop_sim_flow`
-- **Status:** Host-verified
-- **Related:** [../bin/zoop_sim.md](../bin/zoop_sim.md), [integration_offline.md](integration_offline.md)
+- **Purpose:** Automated counterpart to `zoop-sim` — advances time and buttons through a menu/navigation smoke path and asserts expected `AppState`s.
+
+## Component in architecture
+
+```mermaid
+flowchart LR
+  T["zoop_sim_flow"]
+  APP["App"]
+  BTN["ButtonPoller"]
+  T --> APP
+  T --> BTN
+  style T fill:#f96,stroke:#333,stroke-width:3px
+```
+
+## Responsibilities
+
+Assert sim-like UX transitions on host.
+
+## Key types / functions
+
+`#[test]` only.
+
+## Dependencies
+
+`zoop_core` + mocks.
+
+## Tests
+
+```bash
+cargo test -p zoop-core --test zoop_sim_flow
+```
+
+## Status
+
+Host-verified.
+
+## Related
+
+[../bin/zoop_sim.md](../bin/zoop_sim.md), [README.md](README.md), [../../architecture.md](../../architecture.md)

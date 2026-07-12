@@ -1,6 +1,31 @@
 # Zoop documentation
 
-Per-file reference for the Zoop workspace. Each page documents path, purpose, public API, dependencies, tests, status, and related docs.
+Per-file reference for the Zoop workspace. Each page documents path, purpose, architecture placement (Mermaid), public API, dependencies, tests, status, and related docs.
+
+**Start with the system map:** [architecture.md](architecture.md) — host vs device crates, offline record flow, sync/portal flow, and the full state machine.
+
+## Architecture at a glance
+
+```mermaid
+flowchart TB
+  subgraph Host["Host — cargo test"]
+    CORE["zoop-core"]
+    SIM["zoop-sim"]
+    TESTS["tests"]
+  end
+  subgraph Device["ESP32-S3"]
+    MAIN["main.rs"]
+    ENGINE["FirmwareEngine"]
+    BSP["BSP stubs → HIL"]
+  end
+  SIM --> CORE
+  TESTS --> CORE
+  MAIN --> ENGINE
+  ENGINE --> CORE
+  ENGINE --> BSP
+```
+
+Full diagrams: [architecture.md](architecture.md).
 
 ## How to navigate
 
@@ -9,7 +34,7 @@ Per-file reference for the Zoop workspace. Each page documents path, purpose, pu
 3. Open a module README (e.g. [core/display/](core/display/README.md)), then a file page (e.g. [core/display/ui.md](core/display/ui.md)).
 4. Build/CI config lives under [config/](config/README.md).
 
-**Statuses:** *Host-verified* = covered by `cargo test` on CI. *HIL stub* = firmware compiles; hardware path pending.
+**Statuses:** *Host-verified* = covered by `cargo test` on CI. *HIL stub* = firmware compiles; hardware path pending. *Build-time* = compile/config only.
 
 ```bash
 # Host logic
@@ -204,4 +229,4 @@ Overview: [config/README.md](config/README.md)
 
 ## Doc count
 
-See the repository `docs/` tree. Every `.rs` file under `core/` and `firmware/src/` has a matching `.md` page, plus module READMEs and config docs.
+See the repository `docs/` tree. Every `.rs` file under `core/` and `firmware/src/` has a matching `.md` page, plus module READMEs and config docs. Architecture: [architecture.md](architecture.md).

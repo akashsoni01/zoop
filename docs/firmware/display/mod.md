@@ -1,9 +1,38 @@
 # display/mod.rs
 
 - **Path:** `firmware/src/display/mod.rs`
-- **Purpose:** Display submodule — re-exports `EpaperDisplay`.
-- **Key types / functions:** `pub mod draw|epaper|ui`; `pub use epaper::EpaperDisplay`
-- **Dependencies:** Submodules
-- **Tests:** N/A
-- **Status:** HIL stub (panel); draw/UI host-verified in core
-- **Related:** [epaper.md](epaper.md)
+- **Purpose:** Declares `draw`, `epaper`, `ui`; re-exports `EpaperDisplay`.
+
+## Component in architecture
+
+```mermaid
+flowchart LR
+  MOD["display/mod"] --> epaper & draw & ui
+  style MOD fill:#f96,stroke:#333,stroke-width:3px
+```
+
+## Responsibilities
+
+- **Does:** module tree + `EpaperDisplay` re-export
+- **Does not:** paint pixels
+
+## Key types / functions
+
+`pub use epaper::EpaperDisplay`
+
+## Dependencies
+
+- **Outbound:** `draw`, `epaper`, `ui`
+- **Inbound:** `main`, engine
+
+## Tests
+
+Build-only.
+
+## Status
+
+Build-time.
+
+## Related
+
+[README.md](README.md), [epaper.md](epaper.md), [../../architecture.md](../../architecture.md)

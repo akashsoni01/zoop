@@ -1,10 +1,41 @@
 # board/secrets.rs
 
 - **Path:** `firmware/src/board/secrets.rs`
-- **Purpose:** Includes build-generated `secrets_config.rs` from `OUT_DIR` (WiFi + transcription constants).
-- **Key types / functions:**
-  - Generated consts (via `build.rs`): `WIFI_SSID`, `WIFI_PASS`, `LOCAL_TIME_OFFSET_MIN`, `TRANSCRIPTION_PROVIDER`, `TRANSCRIPTION_HOST`, `TRANSCRIPTION_PATH`, `TRANSCRIPTION_API_KEY`, `TRANSCRIPTION_MODEL`, `TRANSCRIPTION_BOUNDARY`
-- **Dependencies:** `include!(concat!(env!("OUT_DIR"), "/secrets_config.rs"))`
-- **Tests:** Validated at build via `TranscriptionConfig::from_secrets`
-- **Status:** Build-time config (do not commit `secrets.toml`)
-- **Related:** [../../config/build.md](../../config/build.md), [../../config/secrets.example.md](../../config/secrets.example.md)
+- **Purpose:** Includes build-generated `secrets_config.rs` from `OUT_DIR` (produced by `build.rs` from gitignored `secrets.toml`). Exposes transcription provider/host/key constants to `main` without committing secrets.
+
+## Component in architecture
+
+```mermaid
+flowchart LR
+  TOML["secrets.toml gitignored"]
+  BUILD["build.rs"]
+  SEC["board/secrets"]
+  MAIN["main / WhisperClient"]
+  TOML --> BUILD --> SEC --> MAIN
+  style SEC fill:#f96,stroke:#333,stroke-width:3px
+```
+
+## Responsibilities
+
+- **Does:** `include!` generated constants (`TRANSCRIPTION_*`, etc.)
+- **Does not:** parse TOML at runtime
+
+## Key types / functions
+
+Constants from generated file — typically provider, host, API key (see `secrets.example.toml`). Do not commit real `secrets.toml`.
+
+## Dependencies
+
+Build script output. Inbound: `main`.
+
+## Tests
+
+Build-time only.
+
+## Status
+
+Build-time.
+
+## Related
+
+[../../config/secrets.example.md](../../config/secrets.example.md), [../../config/build.md](../../config/build.md), [../../architecture.md](../../architecture.md)

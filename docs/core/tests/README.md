@@ -1,12 +1,33 @@
-# Integration tests (`core/tests`)
+# Core integration tests
 
-Workspace/host integration tests for offline UX flows.
+Integration tests under `core/tests/` exercise multi-module offline flows with `MockStorage` / mock BSP — complementary to per-module `#[cfg(test)]` units.
 
-| File | Doc |
-|------|-----|
-| `integration_offline.rs` | [integration_offline.md](integration_offline.md) |
-| `zoop_sim_flow.rs` | [zoop_sim_flow.md](zoop_sim_flow.md) |
+## Component in architecture
+
+```mermaid
+flowchart LR
+  IT["core/tests"]
+  CORE["zoop-core modules"]
+  IT --> CORE
+  style IT fill:#f96,stroke:#333,stroke-width:3px
+```
+
+[architecture.md](../../architecture.md).
+
+## Child docs
+
+| Doc | Source |
+|-----|--------|
+| [integration_offline.md](integration_offline.md) | `integration_offline.rs` |
+| [zoop_sim_flow.md](zoop_sim_flow.md) | `zoop_sim_flow.rs` |
+
+## How to run
 
 ```bash
 cargo test -p zoop-core --test integration_offline --test zoop_sim_flow
+cargo test --workspace --exclude zoop-firmware
 ```
+
+## Status
+
+Host-verified on CI.

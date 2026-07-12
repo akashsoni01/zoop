@@ -1,6 +1,25 @@
 # Config & CI
 
-Workspace and firmware build/config files (not Rust modules).
+Workspace manifests, firmware build/secrets/toolchain, and GitHub Actions.
+
+## Component in architecture
+
+```mermaid
+flowchart TB
+  WS["Cargo workspace"]
+  CORE["zoop-core"]
+  FW["zoop-firmware"]
+  CI["GitHub Actions"]
+  SEC["secrets.toml build-time"]
+  WS --> CORE & FW
+  CI --> CORE
+  SEC --> FW
+  style WS fill:#f96,stroke:#333,stroke-width:2px
+```
+
+[architecture.md](../architecture.md).
+
+## Child docs
 
 | Doc | Source |
 |-----|--------|
@@ -14,4 +33,6 @@ Workspace and firmware build/config files (not Rust modules).
 | [cargo-config.md](cargo-config.md) | `firmware/.cargo/config.toml` |
 | [ci.md](ci.md) | `.github/workflows/ci.yml` |
 
-**Note:** `firmware/secrets.toml` is gitignored and must not be committed. Copy from `secrets.example.toml`.
+## Status
+
+Build-time / CI — not runtime device code.

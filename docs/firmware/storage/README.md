@@ -1,8 +1,27 @@
-# Storage (`firmware/src/storage`)
+# Firmware storage
 
-SD card `FileStorage` adapter (FAT32 via ESP-IDF VFS) — unmounted stub.
+SD card VFS adapter implementing `FileStorage` (HIL stub until SDIO mount works).
 
-| File | Doc |
-|------|-----|
-| `mod.rs` | [mod.md](mod.md) |
-| `sd.rs` | [sd.md](sd.md) |
+## Component in architecture
+
+```mermaid
+flowchart LR
+  APP["App / portal"]
+  SD["SdStorage HIL stub"]
+  FAT["/sdcard FAT32"]
+  APP --> SD -.-> FAT
+  style SD fill:#f96,stroke:#333,stroke-width:3px
+```
+
+[architecture.md](../../architecture.md).
+
+## Child docs
+
+| Doc | Source |
+|-----|--------|
+| [mod.md](mod.md) | `mod.rs` |
+| [sd.md](sd.md) | `sd.rs` |
+
+## Status
+
+HIL stub.

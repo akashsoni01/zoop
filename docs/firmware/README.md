@@ -1,12 +1,31 @@
 # Firmware crate (`zoop-firmware`)
 
-ESP32-S3 firmware for the Waveshare ESP32-S3-ePaper-1.54 Zoop voice notepad. BSP modules implement `zoop-core` traits; most hardware paths are **stubs until HIL**.
+ESP32-S3 board support package and thin engine over `zoop-core`. Most drivers are **HIL stubs** that log and compile for `xtensa-esp32s3-espidf` until Waveshare bring-up.
 
-## Layout
+## Component in architecture
+
+```mermaid
+flowchart TB
+  subgraph Device["ESP32-S3 firmware"]
+    MAIN["main.rs"]
+    ENGINE["FirmwareEngine"]
+    BSP["BSP · SD · E-Ink · ES8311 · GPIO · WiFi"]
+    MAIN --> ENGINE --> BSP
+  end
+  CORE["zoop-core"]
+  ENGINE --> CORE
+  style MAIN fill:#f96,stroke:#333,stroke-width:2px
+  style ENGINE fill:#f96,stroke:#333,stroke-width:2px
+  style BSP fill:#f96,stroke:#333,stroke-width:2px
+```
+
+Full system map: [architecture.md](../architecture.md).
+
+## Child docs
 
 | Area | Docs |
 |------|------|
-| Entry / build | [main.md](main.md), [../config/build.md](../config/build.md) |
+| Entry | [main.md](main.md) |
 | App | [app/](app/) |
 | Board | [board/](board/) |
 | Audio | [audio/](audio/) |
@@ -16,16 +35,16 @@ ESP32-S3 firmware for the Waveshare ESP32-S3-ePaper-1.54 Zoop voice notepad. BSP
 | Power | [power/](power/) |
 | Storage | [storage/](storage/) |
 
-## Build
+## How components interact
 
-Requires ESP toolchain (`espup install`, source `export-esp.sh`):
+`main` inits power → display → SD → audio → RTC → whisper config → `FirmwareEngine::boot`/`tick` loop. Engine wraps `zoop_core::App` with BSP stubs (`SdStorage`, `EpaperDisplay`, `Es8311Audio`, `GpioButtons`, …).
+
+## Build
 
 ```bash
 cd firmware && cargo build
 ```
 
-Host CI excludes this crate: `cargo test --workspace --exclude zoop-firmware`.
-
 ## Status
 
-**HIL stub** — compiles for `xtensa-esp32s3-espidf`; peripherals log and return safe defaults until board bring-up.
+**Build-time / HIL stub** — compiles; hardware paths pending. Host logic verified in `zoop-core`.
