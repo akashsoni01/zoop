@@ -1,11 +1,11 @@
 # Zoop
 
-Small **Palma Notes**–style voice notepad on the Waveshare ESP32-S3 e-Paper board.
+**Zoop Pay** — UPI collect on the Waveshare ESP32-S3 e-Paper board (QR on e-Ink, hold REC to show). Evolved from a Palma Notes–style voice notepad port.
 
-- **Reference firmware (C/Arduino):** [`pala_note/`](./pala_note/) — v1.0, 2026-05-24  
+- **Reference firmware (C/Arduino):** [`pala_note/`](./pala_note/) — historical voice-note reference  
 - **Rust IoT port (in progress):** see [`TODO.md`](./TODO.md)  
 - **Per-file API docs:** [`docs/`](./docs/README.md)  
-- **Architecture diagrams:** [`docs/architecture.md`](./docs/architecture.md)  
+- **Architecture (UPI collect):** [`docs/architecture.md`](./docs/architecture.md)  
 - **UI capabilities + UPI QR preview:** [`docs/core/ui-capabilities.md`](./docs/core/ui-capabilities.md)
 
 ---

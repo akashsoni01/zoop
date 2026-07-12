@@ -1,7 +1,7 @@
 # state.rs
 
 - **Path:** `core/src/state.rs`
-- **Purpose:** Typed UX state machine for Zoop. Maps high-level `Transition` events (button semantics, record success/fail, menu opens) onto `AppState` without stringly-typed screens. `App` owns a `StateMachine` and drives all navigation through `apply`.
+- **Purpose:** Typed UPI payment state machine for Zoop Pay. Maps `Transition` events (button semantics, payment pending/success/fail, menu opens) onto `AppState`. `App` owns a `StateMachine` and drives navigation only through `apply`.
 
 ## Component in architecture
 
@@ -17,19 +17,19 @@ flowchart LR
 
 ## Responsibilities
 
-- **Does:** validate transitions, track `last_rec_num`, activity-reset flag
-- **Does not:** draw pixels, touch storage, start audio
+- **Does:** validate transitions, track `last_txn_num`, activity-reset flag
+- **Does not:** draw pixels, touch storage, build UPI URIs
 
 ## Key types / functions
 
 | Item | Role |
 |------|------|
-| `AppState` | `Idle`, `Recording`, `Saved`, `TagSelect`, `Menu`, `TagBrowser`, `NoteList`, `NoteDetail`, `DeleteConfirm`, `Settings`, `DeviceInfo`, `Transfer`, `Error` |
+| `AppState` | `Idle`, `ShowQr`, `Waiting`, `Success`, `Menu`, `History`, `HistoryDetail`, `CancelConfirm`, `Settings`, `DeviceInfo`, `Merchant`, `Error` |
 | `ButtonEvent` | `None`, `Single`, `Long`, `Double` |
-| `Transition` | `HoldRec`, `ReleaseRec`, `RecSingle/Long/Double`, `PwrSingle/Double`, `RecordSuccess/Fail`, `TagSaved`, menu opens, delete, wake, … |
+| `Transition` | `HoldRec`, `ReleaseRec`, `PaymentPending/Success/Failed/Done`, menu opens, cancel, wake, … |
 | `StateMachine::new` | Start in `Idle` |
-| `state()` / `set_last_rec_num` | Inspect / record last note number |
-| `apply(event)` | Transition or `CoreError` if illegal |
+| `state()` / `set_last_txn_num` | Inspect / record last txn number |
+| `apply(event)` | Transition or `CoreError::InvalidTransition` |
 | `take_activity_reset()` | Consume flag set by activity-producing transitions |
 
 ## Data / control flow
@@ -37,27 +37,21 @@ flowchart LR
 ```mermaid
 stateDiagram-v2
   [*] --> Idle
-  Idle --> Recording: HoldRec
+  Idle --> ShowQr: HoldRec
   Idle --> Menu: PwrSingle
-  Recording --> Saved: RecordSuccess
-  Recording --> Error: RecordFail
-  Saved --> TagSelect: RecordSuccess
-  TagSelect --> Idle: TagSaved
-  Menu --> NoteList: OpenNotes
-  Menu --> TagBrowser: OpenTags
+  ShowQr --> Waiting: ReleaseRec
+  Waiting --> Success: PaymentSuccess
+  Success --> Idle: PaymentDone
+  Menu --> History: OpenHistory
+  Menu --> Merchant: OpenMerchant
   Menu --> Settings: OpenSettings
-  Menu --> Idle: MenuBack
-  NoteList --> NoteDetail: select
-  NoteDetail --> DeleteConfirm: RecLong
-  Settings --> Transfer: OpenTransfer
-  Transfer --> Settings: ExitTransfer
   Error --> Idle: ErrorDismissed
 ```
 
 ## Dependencies
 
 - **Outbound:** `error`
-- **Inbound:** `app`, `sleep` (idle-only ultra sleep), UI render match, firmware re-exports
+- **Inbound:** `app`, `sleep` (no ultra-sleep on ShowQr/Waiting/Error), UI render match, firmware
 
 ## Tests
 
@@ -65,7 +59,7 @@ stateDiagram-v2
 cargo test -p zoop-core state::tests
 ```
 
-Idle→record→tag, menu navigation, illegal transitions, activity reset.
+Collect→success, menu→history, illegal transitions, merchant exit.
 
 ## Status
 
@@ -73,4 +67,4 @@ Host-verified.
 
 ## Related
 
-[app.md](app.md), [buttons.md](buttons.md), [../architecture.md](../architecture.md)
+[app.md](app.md), [payment.md](payment.md), [buttons.md](buttons.md), [../architecture.md](../architecture.md)

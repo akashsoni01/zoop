@@ -1,10 +1,10 @@
-//! Offline dev harness — scripted demo against mock BSP (no ESP32).
+//! Offline dev harness — fullscreen QR home + REC history (no ESP32).
 
 use zoop_core::app::App;
 use zoop_core::buttons::ButtonPoller;
 use zoop_core::mock::{MockAudio, MockBatteryAdc, MockButtons, MockClock, MockDisplay, MockTime};
 use zoop_core::state::AppState;
-use zoop_core::storage::{IndexStore, MockStorage, TagStore};
+use zoop_core::storage::MockStorage;
 
 fn advance(
     clock: &mut MockClock,
@@ -26,80 +26,49 @@ fn main() {
         utc: Some("2026-07-11T10:00:00Z".to_string()),
     };
     let mut adc = MockBatteryAdc::with_voltage(4.0);
-    let mut index = IndexStore::new();
-    let mut tags = TagStore::new();
 
-    let mut app = App::new(
-        &storage,
-        &mut display,
-        &mut audio,
-        &mut time,
-        &mut adc,
-        &mut index,
-        &mut tags,
-    );
+    let mut app = App::new(&storage, &mut display, &mut audio, &mut time, &mut adc);
+    app.ledger.push_paid("250.00", "order");
+    app.ledger.push_paid("80.00", "tip");
 
-    println!("=== Zoop sim (host) ===");
+    println!("=== Zoop Pay sim (host) ===");
     app.boot(&clock).expect("boot");
-    println!("Boot state: {:?}", app.state.state());
+    println!("Boot: {:?} (fullscreen QR home)", app.state.state());
 
     let mut t = 0u64;
 
-    // PWR tap → menu (hold through debounce)
-    buttons.pins_mut().pwr = true;
-    t += 10;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    t += 10;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    buttons.pins_mut().pwr = false;
-    t += 50;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    println!("After PWR tap: {:?}", app.state.state());
-
-    // Hold REC ≥350 ms + record ≥500 ms before release
+    // REC → history
     buttons.pins_mut().rec = true;
-    for _ in 0..35 {
+    t += 10;
+    advance(&mut clock, &mut buttons, &mut app, t);
+    t += 10;
+    advance(&mut clock, &mut buttons, &mut app, t);
+    buttons.pins_mut().rec = false;
+    for _ in 0..15 {
         t += 50;
         advance(&mut clock, &mut buttons, &mut app, t);
-    }
-    buttons.pins_mut().rec = false;
-    for _ in 0..12 {
-        t += 100;
-        advance(&mut clock, &mut buttons, &mut app, t);
-        if app.state.state() == AppState::TagSelect {
+        if app.state.state() == AppState::History {
             break;
         }
     }
     println!(
-        "After record: {:?}, notes={}",
+        "After REC: {:?}, total={}",
         app.state.state(),
-        app.index.len()
+        app.ledger.total_paid_label()
     );
 
-    if app.state.state() == AppState::TagSelect {
-        buttons.pins_mut().rec = true;
-        for _ in 0..15 {
-            t += 50;
-            advance(&mut clock, &mut buttons, &mut app, t);
-            if app.state.state() == AppState::Idle {
-                buttons.pins_mut().rec = false;
-                break;
-            }
+    // REC → back home
+    buttons.pins_mut().rec = true;
+    t += 10;
+    advance(&mut clock, &mut buttons, &mut app, t);
+    buttons.pins_mut().rec = false;
+    for _ in 0..15 {
+        t += 50;
+        advance(&mut clock, &mut buttons, &mut app, t);
+        if app.state.state() == AppState::Idle {
+            break;
         }
-        if app.state.state() != AppState::Idle {
-            buttons.pins_mut().rec = false;
-            for _ in 0..10 {
-                t += 50;
-                advance(&mut clock, &mut buttons, &mut app, t);
-            }
-        }
-        println!(
-            "After tag save: {:?}, notes={}",
-            app.state.state(),
-            app.index.len()
-        );
     }
-
+    println!("Back home: {:?}", app.state.state());
     println!("Display flushes: {}", display.flush_count);
-    println!("Done. Run `cargo test` for full verification.");
 }

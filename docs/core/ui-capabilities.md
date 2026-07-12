@@ -15,29 +15,26 @@ Sample merchant: **Akash Soni** · VPA **akash@oksbi** · amount **Rs 250**.
 
 ## Screen map (AppState → payment UI)
 
-| AppState (buttons) | Screen | What you see |
-|--------------------|--------|----------------|
-| `Idle` | Home | ZOOP PAY, merchant, amount, “hold REC for QR” |
-| `Recording` | **Show QR** | UPI QR (customer scans with GPay/PhonePe/etc.) |
-| `Saved` | Waiting | Checking payment |
-| `TagSelect` | Success | Paid + amount |
-| `Menu` | Menu | Collect · History · Merchant · Settings |
-| `NoteList` | History | Recent payments |
-| `NoteDetail` | Txn detail | Lines for a payment |
-| `DeleteConfirm` | Cancel | Stop this QR? |
-| `Transfer` | Merchant | Name + VPA |
-| `Settings` / `DeviceInfo` | Settings / Device | Same calm chrome |
-| Overlays | Error, battery, resting, Wi‑Fi, sync | Status |
+| `AppState` | Screen | What you see |
+|------------|--------|----------------|
+| `Idle` | **Home QR** | Near full-panel any-amount UPI QR |
+| `PricePick` | **Amounts** | 2×3 grid of preset prices (Rs 50…2000) |
+| `ShowQr` | **Pay QR** | Amount-locked QR for the selected price |
+| `Waiting` | Waiting | Checking payment |
+| `Success` | Success | Paid + amount |
+| `History` | Recent | Last few txns + **TOTAL** (REC from home) |
+| `Menu` | Menu | Prices · History · Merchant · Settings |
+| `Merchant` / `Settings` / `DeviceInfo` | … | Profile / settings |
+| `CancelConfirm` / `Error` | … | Cancel or error |
 
 ```mermaid
 flowchart LR
-  Home -->|Hold REC| QR[Show UPI QR]
-  QR -->|Release / confirm| Wait[Waiting]
-  Wait -->|Bank OK| Paid[Success]
-  Home -->|PWR| Menu
-  Menu --> History
-  Menu --> Merchant
-  Menu --> Settings
+  Home[Any-amount QR] -->|PWR| Menu
+  Menu -->|Prices| Pick[Price grid]
+  Pick -->|REC| PayQR[Amount QR]
+  PayQR -->|REC Done| Wait[Waiting]
+  Wait --> Paid[Success]
+  Home -->|REC| Hist[Recent + TOTAL]
 ```
 
 ---

@@ -42,6 +42,14 @@ pub fn fill_rect(buf: &mut [u8], x: i32, y: i32, w: i32, h: i32, color: u8) {
     }
 }
 
+pub fn stroke_rect(buf: &mut [u8], x: i32, y: i32, w: i32, h: i32, thickness: i32, color: u8) {
+    let t = thickness.max(1);
+    fill_rect(buf, x, y, w, t, color);
+    fill_rect(buf, x, y + h - t, w, t, color);
+    fill_rect(buf, x, y, t, h, color);
+    fill_rect(buf, x + w - t, y, t, h, color);
+}
+
 pub fn hline(buf: &mut [u8], x: i32, y: i32, w: i32, color: u8) {
     for dx in 0..w {
         set_pixel(buf, x + dx, y, color);

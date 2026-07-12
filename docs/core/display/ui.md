@@ -1,7 +1,7 @@
 # display/ui.rs (UPI Pay)
 
 - **Path:** `core/src/display/ui.rs`
-- **Purpose:** Immediate-mode **UPI payment** screens for 200×200 e-Paper — home, QR, waiting, success, history, merchant, settings. Maps `AppState` button flow onto payment visuals.
+- **Purpose:** Immediate-mode **UPI payment** screens for 200×200 e-Paper — home, QR, waiting, success, history, merchant, settings. Renders from payment `AppState` names directly.
 
 Full catalog: [../ui-capabilities.md](../ui-capabilities.md).
 
@@ -24,10 +24,10 @@ flowchart TB
 | ScreenId | AppState | Content |
 |----------|----------|---------|
 | Idle | Idle | ZOOP PAY home |
-| ShowQr | Recording | UPI QR via `draw_qr_centered` |
-| Waiting | Saved | Checking payment |
-| Success | TagSelect | Paid + check |
-| Menu / History / Merchant / … | Menu / NoteList / Transfer / … | Navigation |
+| ShowQr | ShowQr | UPI QR via `draw_qr_centered` |
+| Waiting | Waiting | Checking payment |
+| Success | Success | Paid + check |
+| Menu / History / Merchant / … | matching states | Navigation |
 
 ## `UiContext` payment fields
 
@@ -45,4 +45,4 @@ Host-verified UI. Payment confirmation backend + real e-Paper flush are HIL / pr
 
 ## Related
 
-[qr.md](qr.md) · [../ui-capabilities.md](../ui-capabilities.md) · [../upi.md](../upi.md)
+[qr.md](qr.md) · [../ui-capabilities.md](../ui-capabilities.md) · [../upi.md](../upi.md) · [../payment.md](../payment.md)

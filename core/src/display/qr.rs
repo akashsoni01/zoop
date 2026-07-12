@@ -10,36 +10,65 @@ use crate::display::draw::{fill_rect, BLACK, HEIGHT, WIDTH};
 use crate::error::{CoreError, CoreResult};
 use qrcode::QrCode;
 
-/// Max square size reserved for QR on the Zoop panel (leaves room for labels).
+/// Max square when chrome (header/hints) is present.
 pub const QR_MAX_PX: i32 = 140;
 
-/// Encode `payload` and draw a centered QR into `buf`.
-///
-/// Returns module count (width in modules).
+/// Near full-panel QR for the home collect screen (minimal chrome).
+pub const QR_FULL_PX: i32 = 196;
+
+/// Encode `payload` and draw a centered QR under `top_y` (uses [`QR_MAX_PX`]).
 pub fn draw_qr_centered(buf: &mut [u8], payload: &str, top_y: i32) -> CoreResult<usize> {
+    draw_qr_sized(buf, payload, top_y, QR_MAX_PX)
+}
+
+/// Encode `payload` and fill as much of the panel as possible (home screen).
+pub fn draw_qr_fullscreen(buf: &mut [u8], payload: &str) -> CoreResult<usize> {
     let code = QrCode::new(payload.as_bytes())
         .map_err(|_| CoreError::Other("QR encode failed (payload too long?)".into()))?;
     let modules = code.width();
-    draw_qr_modules(buf, &code, modules, top_y)
-}
-
-fn draw_qr_modules(
-    buf: &mut [u8],
-    code: &QrCode,
-    modules: usize,
-    top_y: i32,
-) -> CoreResult<usize> {
-    // Quiet zone: 2 modules on each side (e-Ink scanners tolerate 2–4)
     let quiet = 2usize;
     let total = modules + quiet * 2;
-    let avail = QR_MAX_PX.min(WIDTH as i32 - 16);
+    let avail = QR_FULL_PX.min(WIDTH as i32).min(HEIGHT as i32);
+    let scale = (avail / total as i32).max(1);
+    let qr_px = scale * total as i32;
+    let origin_x = (WIDTH as i32 - qr_px) / 2;
+    let origin_y = (HEIGHT as i32 - qr_px) / 2;
+    draw_qr_at(buf, &code, modules, quiet, scale, origin_x, origin_y)
+}
+
+fn draw_qr_sized(buf: &mut [u8], payload: &str, top_y: i32, max_px: i32) -> CoreResult<usize> {
+    let code = QrCode::new(payload.as_bytes())
+        .map_err(|_| CoreError::Other("QR encode failed (payload too long?)".into()))?;
+    let modules = code.width();
+    let quiet = 2usize;
+    let total = modules + quiet * 2;
+    let avail = max_px.min(WIDTH as i32 - 4);
     let scale = (avail / total as i32).max(1);
     let qr_px = scale * total as i32;
     let origin_x = (WIDTH as i32 - qr_px) / 2;
     let origin_y = top_y.max(0).min(HEIGHT as i32 - qr_px);
+    draw_qr_at(buf, &code, modules, quiet, scale, origin_x, origin_y)
+}
 
-    // White quiet zone (already white from clear_screen; reinforce)
-    fill_rect(buf, origin_x, origin_y, qr_px, qr_px, crate::display::draw::WHITE);
+fn draw_qr_at(
+    buf: &mut [u8],
+    code: &QrCode,
+    modules: usize,
+    quiet: usize,
+    scale: i32,
+    origin_x: i32,
+    origin_y: i32,
+) -> CoreResult<usize> {
+    let total = modules + quiet * 2;
+    let qr_px = scale * total as i32;
+    fill_rect(
+        buf,
+        origin_x,
+        origin_y,
+        qr_px,
+        qr_px,
+        crate::display::draw::WHITE,
+    );
 
     for y in 0..modules {
         for x in 0..modules {
@@ -53,12 +82,12 @@ fn draw_qr_modules(
     Ok(modules)
 }
 
-/// Estimate whether a payload will fit reasonably on 200×200.
+/// Estimate whether a payload will fit reasonably on 200×200 at full-panel size.
 pub fn qr_fits_panel(payload: &str) -> bool {
     QrCode::new(payload.as_bytes())
         .map(|c| {
             let m = c.width() + 4; // quiet
-            let scale = QR_MAX_PX / m as i32;
+            let scale = QR_FULL_PX / m as i32;
             scale >= 2
         })
         .unwrap_or(false)
@@ -75,12 +104,11 @@ mod tests {
         let mut buf = vec![0xFF; BYTES];
         let uri = build_upi_uri("akash@oksbi", "Akash Soni", "100.00", "Zoop");
         assert!(qr_fits_panel(&uri));
-        let modules = draw_qr_centered(&mut buf, &uri, 36).expect("qr");
+        let modules = draw_qr_fullscreen(&mut buf, &uri).expect("qr");
         assert!(modules >= 21);
-        // Center region should have some black after encode
         let mut dark = 0;
-        for y in 40..160 {
-            for x in 40..160 {
+        for y in 20..180 {
+            for x in 20..180 {
                 if get_pixel(&buf, x, y) == BLACK {
                     dark += 1;
                 }

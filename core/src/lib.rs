@@ -1,5 +1,3 @@
-//! Host-testable core logic for Zoop — ports `pala_note` behavior without ESP dependencies.
-
 pub mod app;
 pub mod battery;
 pub mod buttons;
@@ -9,6 +7,7 @@ pub mod io;
 pub mod mock;
 pub mod network;
 pub mod paths;
+pub mod payment;
 pub mod portal_fmt;
 pub mod power;
 pub mod record;
@@ -31,6 +30,10 @@ pub use network::portal::{handle_portal_request, serve_portal, HttpRequest, Http
 pub use network::whisper::{transcribe_all, transcribe_note, HttpClient};
 pub use network::wifi::{advance_wifi_connect, WifiConnectPhase, WifiMode};
 pub use paths::*;
+pub use payment::{
+    MerchantProfile, PaymentLedger, PaymentRecord, PaymentRequest, PaymentStatus, PriceCatalog,
+    DEFAULT_PRICE_INR,
+};
 pub use portal_fmt::{format_export_text, html_escape, portal_css, url_decode_simple, ExportNote};
 pub use power::{power_on_sequence, power_sleep_sequence};
 pub use record::{RecordOutcome, RecordSession};

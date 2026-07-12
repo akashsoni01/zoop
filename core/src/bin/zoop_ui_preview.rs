@@ -58,6 +58,7 @@ fn make_ctx<'a>(
     buf: &'a mut [u8],
     uri: &'a str,
     history: &'a [String],
+    prices: &'a [String],
     tags: &'a [String],
 ) -> UiContext<'a> {
     UiContext {
@@ -70,10 +71,13 @@ fn make_ctx<'a>(
         upi_uri: uri,
         txn_note: "order 42",
         txn_count: 5,
-        menu_index: 1,
+        menu_index: 0,
         settings_index: 0,
         history_index: 0,
         history_lines: history,
+        history_total: "Rs 1530",
+        price_labels: prices,
+        price_index: 2,
         error_msg: "PAY FAIL",
         device_rtc: "set",
         sounds_on: true,
@@ -103,31 +107,32 @@ fn main() {
         "#005  Rs 250".into(),
         "#004  Rs 80".into(),
         "#003  Rs 1200".into(),
-        "Akash Soni".into(),
-        "akash@oksbi".into(),
+        "#002  Rs 40".into(),
+        "#001  Rs 15".into(),
+    ];
+    let prices = vec![
+        "Rs 50".into(),
+        "Rs 100".into(),
+        "Rs 200".into(),
+        "Rs 500".into(),
+        "Rs 1000".into(),
+        "Rs 2000".into(),
     ];
     let tags: Vec<String> = vec![];
 
     let screens: Vec<(&str, Box<dyn Fn(&mut UiContext<'_>) -> ScreenId>)> = vec![
-        ("01_home", Box::new(|ui| ui.render(AppState::Idle))),
-        ("02_qr_upi", Box::new(|ui| ui.render(AppState::Recording))),
-        ("03_waiting", Box::new(|ui| ui.render(AppState::Saved))),
-        ("04_success", Box::new(|ui| ui.render(AppState::TagSelect))),
-        ("05_menu", Box::new(|ui| ui.render(AppState::Menu))),
-        ("06_history", Box::new(|ui| ui.render(AppState::NoteList))),
-        ("07_txn_detail", Box::new(|ui| ui.render(AppState::NoteDetail))),
-        ("08_cancel", Box::new(|ui| ui.render(AppState::DeleteConfirm))),
-        ("09_merchant", Box::new(|ui| ui.render(AppState::Transfer))),
+        ("01_home_qr", Box::new(|ui| ui.render(AppState::Idle))),
+        ("02_price_pick", Box::new(|ui| ui.render(AppState::PricePick))),
+        ("03_priced_qr", Box::new(|ui| ui.render(AppState::ShowQr))),
+        ("04_waiting", Box::new(|ui| ui.render(AppState::Waiting))),
+        ("05_success", Box::new(|ui| ui.render(AppState::Success))),
+        ("06_recent_txns", Box::new(|ui| ui.render(AppState::History))),
+        ("07_menu", Box::new(|ui| ui.render(AppState::Menu))),
+        ("08_cancel", Box::new(|ui| ui.render(AppState::CancelConfirm))),
+        ("09_merchant", Box::new(|ui| ui.render(AppState::Merchant))),
         ("10_settings", Box::new(|ui| ui.render(AppState::Settings))),
         ("11_device", Box::new(|ui| ui.render(AppState::DeviceInfo))),
         ("12_error", Box::new(|ui| ui.render(AppState::Error))),
-        ("13_battery_low", Box::new(|ui| ui.show_battery_low())),
-        ("14_resting", Box::new(|ui| ui.show_ultra_sleep())),
-        (
-            "15_wifi",
-            Box::new(|ui| ui.show_wifi_connecting(4, 20)),
-        ),
-        ("16_sync", Box::new(|ui| ui.show_transcribing())),
     ];
 
     let mut cards = String::new();
@@ -137,7 +142,7 @@ fn main() {
 
     for (name, render) in &screens {
         let mut buf = vec![0xFFu8; BYTES];
-        let mut ui = make_ctx(&mut buf, &uri, &history, &tags);
+        let mut ui = make_ctx(&mut buf, &uri, &history, &prices, &tags);
         let id = render(&mut ui);
         let bmp = out.join(format!("{name}.bmp"));
         write_bmp(&bmp, &buf).expect("write bmp");
@@ -176,7 +181,7 @@ fn main() {
 <body>
   <h1>Zoop Pay — UPI UI</h1>
   <p class="sub">
-    200×200 monochrome screens for Waveshare e-Paper. Home → hold REC → UPI QR → wait → paid.
+    Home any-amount QR · Menu → Prices → pick → amount QR → Done.
     Preview: <code>cargo run -p zoop-core --bin zoop-ui-preview</code>
   </p>
   <div class="grid">

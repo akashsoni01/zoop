@@ -1,26 +1,32 @@
-//! Typed app state machine — ports `types.h` and `pala_note.ino` transitions.
+//! Typed UPI payment state machine for Zoop Pay.
 
 use crate::error::{CoreError, CoreResult};
 
-/// Application screens — mirrors `AppState` in `types.h`.
+/// Application screens — UPI collect / history / settings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AppState {
+    /// Home — fullscreen any-amount QR
     Idle,
-    Recording,
-    Saved,
-    TagSelect,
+    /// Pick a predefined price
+    PricePick,
+    /// Customer-facing UPI QR for a selected amount
+    ShowQr,
+    /// Awaiting bank / backend confirmation
+    Waiting,
+    /// Payment confirmed
+    Success,
     Menu,
-    TagBrowser,
-    NoteList,
-    NoteDetail,
-    DeleteConfirm,
+    History,
+    HistoryDetail,
+    CancelConfirm,
     Settings,
     DeviceInfo,
-    Transfer,
+    /// Merchant VPA profile
+    Merchant,
     Error,
 }
 
-/// Button events from `buttons.cpp`.
+/// Physical button events (REC / PWR).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ButtonEvent {
     None,
@@ -29,7 +35,7 @@ pub enum ButtonEvent {
     Double,
 }
 
-/// High-level transition events for the state machine.
+/// High-level transition events for the payment state machine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Transition {
     HoldRec,
@@ -39,30 +45,37 @@ pub enum Transition {
     RecDouble,
     PwrSingle,
     PwrDouble,
-    RecordSuccess,
-    RecordFail,
-    TagSaved,
-    MenuSelect,
+    /// ShowQr → Waiting
+    PaymentPending,
+    /// Waiting → Success
+    PaymentSuccess,
+    /// Waiting / ShowQr → Error
+    PaymentFailed,
+    /// Success → Idle
+    PaymentDone,
     MenuBack,
-    OpenNotes,
-    OpenTags,
-    OpenSync,
+    OpenCollect,
+    OpenPrices,
+    OpenHistory,
+    OpenMerchant,
     OpenSettings,
     OpenDeviceInfo,
-    OpenTransfer,
-    ExitTransfer,
-    DeleteConfirmed,
-    DeleteCancelled,
+    ExitMerchant,
+    /// PricePick → ShowQr after amount chosen
+    SelectPrice,
+    CancelConfirmed,
+    CancelDismissed,
     ErrorDismissed,
     WakeToMenu,
-    WakeToRec,
+    WakeToCollect,
 }
 
 /// Testable state machine with explicit transitions.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StateMachine {
     state: AppState,
-    pub last_rec_num: i32,
+    /// Last payment / order number
+    pub last_txn_num: i32,
     pub activity_reset: bool,
 }
 
@@ -70,7 +83,7 @@ impl StateMachine {
     pub fn new() -> Self {
         Self {
             state: AppState::Idle,
-            last_rec_num: -1,
+            last_txn_num: -1,
             activity_reset: false,
         }
     }
@@ -79,62 +92,123 @@ impl StateMachine {
         self.state
     }
 
-    pub fn set_last_rec_num(&mut self, num: i32) {
-        self.last_rec_num = num;
+    pub fn set_last_txn_num(&mut self, num: i32) {
+        self.last_txn_num = num;
     }
 
     pub fn apply(&mut self, event: Transition) -> CoreResult<AppState> {
         self.activity_reset = true;
         let next = match (self.state, event) {
-            (AppState::Idle, Transition::HoldRec) => AppState::Recording,
+            (
+                AppState::Idle,
+                Transition::RecSingle
+                    | Transition::HoldRec
+                    | Transition::OpenHistory
+                    | Transition::RecLong
+                    | Transition::RecDouble,
+            ) => AppState::History,
             (AppState::Idle, Transition::PwrSingle) => AppState::Menu,
-            (AppState::Recording, Transition::ReleaseRec) => AppState::Saved,
-            (AppState::Recording, Transition::RecordFail) => AppState::Error,
-            (AppState::Saved, Transition::RecordSuccess) => AppState::TagSelect,
-            (AppState::TagSelect, Transition::TagSaved) => AppState::Idle,
-            (AppState::TagSelect, Transition::RecSingle | Transition::RecLong) => AppState::Idle,
-            (AppState::Menu, Transition::OpenNotes) => AppState::NoteList,
-            (AppState::Menu, Transition::OpenTags) => AppState::TagBrowser,
-            (AppState::Menu, Transition::OpenSync) => AppState::Menu,
+            (AppState::Idle, Transition::WakeToMenu) => AppState::Menu,
+            (
+                AppState::Idle,
+                Transition::WakeToCollect | Transition::OpenCollect | Transition::OpenPrices,
+            ) => AppState::PricePick,
+
+            (AppState::PricePick, Transition::SelectPrice | Transition::RecSingle) => {
+                AppState::ShowQr
+            }
+            (
+                AppState::PricePick,
+                Transition::MenuBack | Transition::RecLong | Transition::RecDouble,
+            ) => AppState::Menu,
+            (AppState::PricePick, Transition::PwrSingle) => AppState::PricePick,
+
+            (AppState::ShowQr, Transition::ReleaseRec | Transition::PaymentPending) => {
+                AppState::Waiting
+            }
+            (AppState::ShowQr, Transition::RecLong | Transition::RecDouble) => {
+                AppState::CancelConfirm
+            }
+            (AppState::ShowQr, Transition::PaymentFailed) => AppState::Error,
+            (AppState::ShowQr, Transition::MenuBack | Transition::PwrSingle) => {
+                AppState::PricePick
+            }
+            (AppState::ShowQr, Transition::OpenHistory) => AppState::History,
+            // REC on priced QR = confirm / start waiting (not history)
+            (AppState::ShowQr, Transition::RecSingle) => AppState::Waiting,
+
+            (AppState::Waiting, Transition::PaymentSuccess) => AppState::Success,
+            (AppState::Waiting, Transition::PaymentFailed) => AppState::Error,
+            (
+                AppState::Waiting,
+                Transition::RecLong | Transition::RecDouble | Transition::MenuBack,
+            ) => AppState::CancelConfirm,
+
+            (AppState::Success, Transition::PaymentDone | Transition::RecSingle) => AppState::Idle,
+
+            (AppState::Menu, Transition::OpenCollect | Transition::OpenPrices) => {
+                AppState::PricePick
+            }
+            (AppState::Menu, Transition::OpenHistory) => AppState::History,
+            (AppState::Menu, Transition::OpenMerchant) => AppState::Merchant,
             (AppState::Menu, Transition::OpenSettings) => AppState::Settings,
             (
                 AppState::Menu,
                 Transition::MenuBack | Transition::RecLong | Transition::RecDouble,
             ) => AppState::Idle,
-            (AppState::NoteList, Transition::RecSingle) => AppState::NoteDetail,
+
             (
-                AppState::NoteList,
-                Transition::MenuBack | Transition::RecLong | Transition::RecDouble,
-            ) => AppState::Menu,
-            (AppState::NoteDetail, Transition::RecLong) => AppState::DeleteConfirm,
-            (AppState::NoteDetail, Transition::RecDouble | Transition::MenuBack) => {
-                AppState::NoteList
+                AppState::History,
+                Transition::RecSingle
+                    | Transition::MenuBack
+                    | Transition::RecLong
+                    | Transition::RecDouble,
+            ) => AppState::Idle,
+            (AppState::History, Transition::OpenHistory) => AppState::HistoryDetail,
+
+            (AppState::HistoryDetail, Transition::RecLong) => AppState::CancelConfirm,
+            (
+                AppState::HistoryDetail,
+                Transition::RecDouble | Transition::MenuBack | Transition::RecSingle,
+            ) => AppState::History,
+
+            (AppState::CancelConfirm, Transition::CancelConfirmed | Transition::RecSingle) => {
+                AppState::Idle
             }
-            (AppState::DeleteConfirm, Transition::RecSingle) => AppState::NoteList,
             (
-                AppState::DeleteConfirm,
-                Transition::MenuBack | Transition::RecLong | Transition::RecDouble,
-            ) => AppState::NoteDetail,
-            (AppState::Settings, Transition::OpenTransfer) => AppState::Transfer,
+                AppState::CancelConfirm,
+                Transition::CancelDismissed
+                    | Transition::MenuBack
+                    | Transition::RecLong
+                    | Transition::RecDouble,
+            ) => AppState::PricePick,
+
+            (AppState::Settings, Transition::OpenDeviceInfo) => AppState::DeviceInfo,
             (
                 AppState::Settings,
                 Transition::MenuBack | Transition::RecLong | Transition::RecDouble,
             ) => AppState::Menu,
-            (AppState::Settings, Transition::OpenDeviceInfo) => AppState::DeviceInfo,
+
             (
                 AppState::DeviceInfo,
-                Transition::MenuBack | Transition::RecLong | Transition::RecDouble,
+                Transition::MenuBack
+                    | Transition::RecLong
+                    | Transition::RecDouble
+                    | Transition::RecSingle
+                    | Transition::PwrSingle,
             ) => AppState::Settings,
+
             (
-                AppState::Transfer,
-                Transition::ExitTransfer | Transition::RecLong | Transition::RecDouble,
-            ) => AppState::Settings,
-            (AppState::Error, Transition::ErrorDismissed) => AppState::Idle,
-            (
-                AppState::TagBrowser,
-                Transition::MenuBack | Transition::RecLong | Transition::RecDouble,
+                AppState::Merchant,
+                Transition::ExitMerchant
+                    | Transition::MenuBack
+                    | Transition::RecLong
+                    | Transition::RecDouble
+                    | Transition::RecSingle,
             ) => AppState::Menu,
-            (AppState::TagBrowser, Transition::RecSingle) => AppState::NoteList,
+
+            (AppState::Error, Transition::ErrorDismissed) => AppState::Idle,
+
             _ => {
                 return Err(CoreError::InvalidTransition {
                     from: self.state,
@@ -164,40 +238,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn idle_hold_rec_starts_recording() {
+    fn idle_rec_opens_history() {
         let mut sm = StateMachine::new();
         assert_eq!(
-            sm.apply(Transition::HoldRec).expect("ok"),
-            AppState::Recording
+            sm.apply(Transition::RecSingle).expect("ok"),
+            AppState::History
+        );
+        assert_eq!(sm.apply(Transition::MenuBack).expect("ok"), AppState::Idle);
+    }
+
+    #[test]
+    fn price_pick_to_qr_to_success() {
+        let mut sm = StateMachine::new();
+        sm.apply(Transition::OpenPrices).expect("prices");
+        assert_eq!(sm.state(), AppState::PricePick);
+        sm.apply(Transition::SelectPrice).expect("qr");
+        assert_eq!(sm.state(), AppState::ShowQr);
+        sm.apply(Transition::PaymentPending).expect("wait");
+        assert_eq!(
+            sm.apply(Transition::PaymentSuccess).expect("ok"),
+            AppState::Success
         );
     }
 
     #[test]
-    fn idle_pwr_opens_menu() {
-        let mut sm = StateMachine::new();
-        assert_eq!(sm.apply(Transition::PwrSingle).expect("ok"), AppState::Menu);
-    }
-
-    #[test]
-    fn recording_to_tag_select_flow() {
-        let mut sm = StateMachine::new();
-        sm.apply(Transition::HoldRec).expect("rec");
-        sm.apply(Transition::ReleaseRec).expect("release");
-        sm.state = AppState::Saved;
-        assert_eq!(
-            sm.apply(Transition::RecordSuccess).expect("ok"),
-            AppState::TagSelect
-        );
-        assert_eq!(sm.apply(Transition::TagSaved).expect("ok"), AppState::Idle);
-    }
-
-    #[test]
-    fn menu_to_note_list() {
+    fn menu_opens_prices() {
         let mut sm = StateMachine::new();
         sm.apply(Transition::PwrSingle).expect("menu");
         assert_eq!(
-            sm.apply(Transition::OpenNotes).expect("ok"),
-            AppState::NoteList
+            sm.apply(Transition::OpenPrices).expect("ok"),
+            AppState::PricePick
         );
     }
 
@@ -205,15 +275,5 @@ mod tests {
     fn invalid_transition_errors() {
         let mut sm = StateMachine::new();
         assert!(sm.apply(Transition::ReleaseRec).is_err());
-    }
-
-    #[test]
-    fn transfer_exit_returns_settings() {
-        let mut sm = StateMachine::new();
-        sm.state = AppState::Transfer;
-        assert_eq!(
-            sm.apply(Transition::ExitTransfer).expect("ok"),
-            AppState::Settings
-        );
     }
 }

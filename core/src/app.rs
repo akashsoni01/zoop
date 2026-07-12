@@ -1,21 +1,17 @@
-//! Application engine — state machine + traits driving offline flows.
+//! Application engine — UPI payment state machine + BSP traits.
 
 use crate::battery::{battery_percent_from_adc_samples, BatteryCurve};
 use crate::buttons::ButtonPoller;
 use crate::display::ui::{ScreenId, UiContext};
 use crate::error::CoreResult;
 use crate::io::{Audio, BatteryAdc, ButtonEvents, Clock, Display, SoundKind, TimeSource};
-use crate::paths::note_path;
-use crate::record::{finalize_new_note, RecordOutcome, RecordSession};
+use crate::payment::{MerchantProfile, PaymentLedger, PaymentRequest, PriceCatalog};
 use crate::sleep::ActivityTimer;
 use crate::sounds::SoundsPolicy;
 use crate::state::{AppState, ButtonEvent, StateMachine, Transition};
-use crate::storage::{
-    delete_note, load_index, load_tags, next_note_number, FileStorage, IndexStore, TagStore,
-};
+use crate::storage::FileStorage;
 
 pub const FIRMWARE_VERSION: &str = "v1.0";
-pub const LOCAL_TIME_OFFSET_MIN: i32 = 120;
 
 /// High-level app context wiring core logic to BSP traits.
 pub struct App<'a, S, D, A, T, ADC> {
@@ -24,20 +20,23 @@ pub struct App<'a, S, D, A, T, ADC> {
     pub audio: &'a mut A,
     pub time: &'a mut T,
     pub battery_adc: &'a mut ADC,
-    pub index: &'a mut IndexStore,
-    pub tags: &'a mut TagStore,
     pub state: StateMachine,
     pub activity: ActivityTimer,
     pub sounds: SoundsPolicy,
     pub menu_index: usize,
     pub settings_index: usize,
-    pub tag_index: usize,
-    pub list_filter: String,
-    pub detail_num: i32,
+    pub history_index: usize,
+    pub price_index: usize,
+    pub detail_txn: i32,
     pub detail_page: usize,
-    pub transfer_ip: String,
     pub error_msg: String,
-    pub record: Option<RecordSession>,
+    pub merchant: MerchantProfile,
+    pub prices: PriceCatalog,
+    pub ledger: PaymentLedger,
+    pub active: Option<PaymentRequest>,
+    /// Default collect amount on home QR (`""` = any amount).
+    pub default_amount_inr: String,
+    pub waiting_since_ms: Option<u64>,
     pub last_screen: ScreenId,
 }
 
@@ -55,8 +54,6 @@ where
         audio: &'a mut A,
         time: &'a mut T,
         battery_adc: &'a mut ADC,
-        index: &'a mut IndexStore,
-        tags: &'a mut TagStore,
     ) -> Self {
         Self {
             storage,
@@ -64,27 +61,27 @@ where
             audio,
             time,
             battery_adc,
-            index,
-            tags,
             state: StateMachine::new(),
             activity: ActivityTimer::default(),
             sounds: SoundsPolicy::default(),
             menu_index: 0,
             settings_index: 0,
-            tag_index: 0,
-            list_filter: "All".to_string(),
-            detail_num: 1,
+            history_index: 0,
+            price_index: 0,
+            detail_txn: -1,
             detail_page: 0,
-            transfer_ip: String::new(),
             error_msg: String::new(),
-            record: None,
+            merchant: MerchantProfile::default(),
+            prices: PriceCatalog::from_defaults(),
+            ledger: PaymentLedger::new(),
+            active: None,
+            default_amount_inr: String::new(),
+            waiting_since_ms: None,
             last_screen: ScreenId::Idle,
         }
     }
 
     pub fn boot<C: Clock>(&mut self, clock: &C) -> CoreResult<()> {
-        load_index(self.storage, self.index)?;
-        load_tags(self.storage, self.tags)?;
         self.activity.reset_activity(clock.now_ms());
         self.redraw(clock)?;
         Ok(())
@@ -97,6 +94,7 @@ where
     ) -> CoreResult<()> {
         let now = clock.now_ms();
         self.handle_buttons(buttons, now)?;
+        self.advance_payment(now)?;
         self.check_ultra_sleep(now)?;
         self.redraw(clock)?;
         Ok(())
@@ -107,11 +105,6 @@ where
         buttons: &mut ButtonPoller<B>,
         now_ms: u64,
     ) -> CoreResult<()> {
-        if self.state.state() == AppState::Idle && buttons.idle_rec_hold_started(now_ms) {
-            self.start_record(now_ms)?;
-            return Ok(());
-        }
-
         let rec = buttons.poll_rec(now_ms);
         let pwr = buttons.poll_pwr(now_ms);
         if rec != ButtonEvent::None || pwr != ButtonEvent::None {
@@ -121,18 +114,26 @@ where
 
         match self.state.state() {
             AppState::Idle => self.handle_idle(rec, pwr)?,
-            AppState::Recording => self.handle_recording(buttons.rec_pressed(), now_ms)?,
-            AppState::Saved | AppState::TagSelect => self.handle_tag_select(rec, pwr, now_ms)?,
+            AppState::PricePick => self.handle_price_pick(rec, pwr, now_ms)?,
+            AppState::ShowQr => self.handle_show_qr(rec, pwr, now_ms)?,
+            AppState::Waiting => self.handle_waiting(rec)?,
+            AppState::Success => {
+                if rec == ButtonEvent::Single {
+                    self.finish_success(now_ms)?;
+                }
+            }
             AppState::Menu => self.handle_menu(rec, pwr)?,
-            AppState::NoteList | AppState::TagBrowser => self.handle_note_list(rec, pwr)?,
-            AppState::NoteDetail => self.handle_note_detail(rec, pwr)?,
-            AppState::DeleteConfirm => self.handle_delete_confirm(rec, pwr)?,
+            AppState::History => self.handle_history(rec, pwr)?,
+            AppState::HistoryDetail => self.handle_history_detail(rec, pwr)?,
+            AppState::CancelConfirm => self.handle_cancel(rec)?,
             AppState::Settings => self.handle_settings(rec, pwr)?,
             AppState::DeviceInfo => self.handle_nav_back(rec, Transition::MenuBack)?,
-            AppState::Transfer => self.handle_transfer(rec)?,
+            AppState::Merchant => self.handle_nav_back(rec, Transition::ExitMerchant)?,
             AppState::Error => {
                 if rec == ButtonEvent::Single || pwr == ButtonEvent::Single {
                     let _ = self.state.apply(Transition::ErrorDismissed);
+                    self.active = None;
+                    self.error_msg.clear();
                 }
             }
         }
@@ -140,88 +141,133 @@ where
     }
 
     fn handle_idle(&mut self, rec: ButtonEvent, pwr: ButtonEvent) -> CoreResult<()> {
+        if rec == ButtonEvent::Single || rec == ButtonEvent::Long || rec == ButtonEvent::Double {
+            self.sounds.play(self.audio, SoundKind::Select);
+            self.history_index = 0;
+            let _ = self.state.apply(Transition::OpenHistory);
+        }
         if pwr == ButtonEvent::Single {
             self.sounds.play(self.audio, SoundKind::Select);
             let _ = self.state.apply(Transition::PwrSingle);
         }
-        let _ = (rec,);
         Ok(())
     }
 
-    fn start_record(&mut self, now_ms: u64) -> CoreResult<()> {
-        let num = next_note_number(self.index);
-        let mut session = RecordSession::start(num);
-        session.begin(self.audio, self.storage, now_ms)?;
-        self.record = Some(session);
-        self.state.set_last_rec_num(num);
-        let _ = self.state.apply(Transition::HoldRec);
-        Ok(())
-    }
-
-    fn handle_recording(&mut self, rec_pressed: bool, now_ms: u64) -> CoreResult<()> {
-        if let Some(session) = self.record.as_mut() {
-            session.pump(self.audio, self.storage)?;
-            if rec_pressed {
-                return Ok(());
-            }
-            let outcome = session.stop(self.audio, self.storage, now_ms);
-            self.record = None;
-            match outcome {
-                RecordOutcome::Success { num, .. } => {
-                    self.sounds.play(self.audio, SoundKind::Saved);
-                    self.detail_num = num;
-                    let _ = self.state.apply(Transition::ReleaseRec);
-                    let _ = self.state.apply(Transition::RecordSuccess);
-                }
-                RecordOutcome::TooShort => {
-                    self.error_msg = "REC FAIL".into();
-                    let _ = self.state.apply(Transition::RecordFail);
-                }
-                RecordOutcome::WriteFailed(msg) => {
-                    self.error_msg = msg;
-                    let _ = self.state.apply(Transition::RecordFail);
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn handle_tag_select(
+    fn handle_price_pick(
         &mut self,
         rec: ButtonEvent,
         pwr: ButtonEvent,
         now_ms: u64,
     ) -> CoreResult<()> {
-        if self.state.state() == AppState::Saved {
-            let _ = self.state.apply(Transition::RecordSuccess);
-        }
+        let n = self.prices.len().max(1);
         if pwr == ButtonEvent::Single {
             self.sounds.play(self.audio, SoundKind::Next);
-            if !self.tags.tags().is_empty() {
-                self.tag_index = (self.tag_index + 1) % self.tags.tags().len();
-            }
+            self.price_index = (self.price_index + 1) % n;
         }
-        if rec == ButtonEvent::Single || rec == ButtonEvent::Long {
-            self.save_current_tag(now_ms)?;
+        if rec == ButtonEvent::Single {
+            self.start_priced_collect(now_ms)?;
+        }
+        if rec == ButtonEvent::Long || rec == ButtonEvent::Double {
+            self.active = None;
+            self.handle_nav_back(rec, Transition::MenuBack)?;
         }
         Ok(())
     }
 
-    fn save_current_tag(&mut self, now_ms: u64) -> CoreResult<()> {
-        let num = self.state.last_rec_num;
-        let tag = self
-            .tags
-            .tags()
-            .get(self.tag_index)
-            .cloned()
-            .unwrap_or_else(|| "Note".to_string());
-        let utc = self
-            .time
-            .utc_iso()
-            .unwrap_or_else(|| "2026-01-01T00:00:00Z".to_string());
-        finalize_new_note(self.storage, self.index, num, &tag, &utc)?;
+    pub(crate) fn start_priced_collect(&mut self, now_ms: u64) -> CoreResult<()> {
+        let amount = self
+            .prices
+            .get(self.price_index)
+            .unwrap_or("100.00")
+            .to_string();
+        let note = format!("Zoop {}", self.ledger.next_num());
+        let mut req = PaymentRequest::new(&self.merchant, &amount, &note);
+        req.mark_qr_shown();
+        self.state.set_last_txn_num(self.ledger.next_num());
+        self.active = Some(req);
+        self.waiting_since_ms = None;
+        self.sounds.play(self.audio, SoundKind::Select);
+        let _ = self.state.apply(Transition::SelectPrice);
+        self.activity.reset_activity(now_ms);
+        Ok(())
+    }
+
+    fn handle_show_qr(
+        &mut self,
+        rec: ButtonEvent,
+        pwr: ButtonEvent,
+        now_ms: u64,
+    ) -> CoreResult<()> {
+        if rec == ButtonEvent::Single {
+            // Merchant confirms customer paid / advance to waiting
+            if let Some(req) = self.active.as_mut() {
+                req.mark_pending();
+            }
+            self.waiting_since_ms = Some(now_ms);
+            self.sounds.play(self.audio, SoundKind::Select);
+            let _ = self.state.apply(Transition::PaymentPending);
+            self.activity.reset_activity(now_ms);
+        }
+        if rec == ButtonEvent::Long || rec == ButtonEvent::Double {
+            let _ = self.state.apply(Transition::RecLong);
+        }
+        if pwr == ButtonEvent::Single {
+            self.active = None;
+            let _ = self.state.apply(Transition::MenuBack);
+        }
+        Ok(())
+    }
+
+    fn handle_waiting(&mut self, rec: ButtonEvent) -> CoreResult<()> {
+        if rec == ButtonEvent::Long || rec == ButtonEvent::Double {
+            let _ = self.state.apply(Transition::RecLong);
+        }
+        Ok(())
+    }
+
+    fn advance_payment(&mut self, now_ms: u64) -> CoreResult<()> {
+        match self.state.state() {
+            AppState::Waiting => {
+                let since = self.waiting_since_ms.unwrap_or(now_ms);
+                if now_ms.saturating_sub(since) >= 1_500 {
+                    self.complete_payment(now_ms)?;
+                }
+            }
+            AppState::Success => {
+                if self.activity.idle_ms(now_ms) >= 2_500 {
+                    self.finish_success(now_ms)?;
+                }
+            }
+            AppState::Error => {
+                if self.activity.idle_ms(now_ms) >= 2_500 {
+                    let _ = self.state.apply(Transition::ErrorDismissed);
+                    self.active = None;
+                    self.error_msg.clear();
+                    self.activity.reset_activity(now_ms);
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn complete_payment(&mut self, now_ms: u64) -> CoreResult<()> {
+        if let Some(mut req) = self.active.take() {
+            req.mark_paid();
+            let rec = self.ledger.push_paid(&req.amount_inr, &req.note);
+            self.detail_txn = rec.num;
+            self.active = Some(req);
+        }
+        self.waiting_since_ms = None;
         self.sounds.play(self.audio, SoundKind::Success);
-        let _ = self.state.apply(Transition::TagSaved);
+        let _ = self.state.apply(Transition::PaymentSuccess);
+        self.activity.reset_activity(now_ms);
+        Ok(())
+    }
+
+    fn finish_success(&mut self, now_ms: u64) -> CoreResult<()> {
+        let _ = self.state.apply(Transition::PaymentDone);
+        self.active = None;
         self.activity.reset_activity(now_ms);
         Ok(())
     }
@@ -235,14 +281,15 @@ where
             self.sounds.play(self.audio, SoundKind::Select);
             match self.menu_index {
                 0 => {
-                    self.list_filter = "All".into();
-                    let _ = self.state.apply(Transition::OpenNotes);
+                    self.price_index = 0;
+                    let _ = self.state.apply(Transition::OpenPrices);
                 }
                 1 => {
-                    let _ = self.state.apply(Transition::OpenTags);
+                    self.history_index = 0;
+                    let _ = self.state.apply(Transition::OpenHistory);
                 }
                 2 => {
-                    let _ = self.state.apply(Transition::OpenSync);
+                    let _ = self.state.apply(Transition::OpenMerchant);
                 }
                 _ => {
                     let _ = self.state.apply(Transition::OpenSettings);
@@ -255,50 +302,44 @@ where
         Ok(())
     }
 
-    fn handle_note_list(&mut self, rec: ButtonEvent, pwr: ButtonEvent) -> CoreResult<()> {
+    fn handle_history(&mut self, rec: ButtonEvent, pwr: ButtonEvent) -> CoreResult<()> {
         if pwr == ButtonEvent::Single {
             self.sounds.play(self.audio, SoundKind::Next);
+            let n = self.ledger.recent_labels(8).len().max(1);
+            self.history_index = (self.history_index + 1) % n;
         }
-        if rec == ButtonEvent::Single {
-            self.sounds.play(self.audio, SoundKind::Select);
-            let _ = self.state.apply(Transition::RecSingle);
-        }
-        if rec == ButtonEvent::Long || rec == ButtonEvent::Double {
-            self.handle_nav_back(rec, Transition::MenuBack)?;
+        if rec == ButtonEvent::Single || rec == ButtonEvent::Long || rec == ButtonEvent::Double {
+            self.sounds.play(self.audio, SoundKind::Back);
+            let _ = self.state.apply(Transition::MenuBack);
         }
         Ok(())
     }
 
-    fn handle_note_detail(&mut self, rec: ButtonEvent, pwr: ButtonEvent) -> CoreResult<()> {
-        if rec == ButtonEvent::Single {
-            self.sounds.play(self.audio, SoundKind::Select);
-            let path = note_path(self.detail_num, "wav");
-            let _ = self.audio.start_playback(&path);
-        }
+    fn handle_history_detail(&mut self, rec: ButtonEvent, pwr: ButtonEvent) -> CoreResult<()> {
         if rec == ButtonEvent::Long {
             let _ = self.state.apply(Transition::RecLong);
         }
-        if rec == ButtonEvent::Double {
+        if rec == ButtonEvent::Double || rec == ButtonEvent::Single {
             self.handle_nav_back(rec, Transition::MenuBack)?;
         }
         if pwr == ButtonEvent::Single {
-            self.detail_page += 1;
+            self.detail_page = self.detail_page.saturating_add(1);
         }
-        if self.audio.is_playing() && rec == ButtonEvent::Single {
-            self.audio.stop_playback();
-        }
-        let _ = pwr;
         Ok(())
     }
 
-    fn handle_delete_confirm(&mut self, rec: ButtonEvent, pwr: ButtonEvent) -> CoreResult<()> {
+    fn handle_cancel(&mut self, rec: ButtonEvent) -> CoreResult<()> {
         if rec == ButtonEvent::Single {
+            if let Some(req) = self.active.as_mut() {
+                req.mark_cancelled();
+            }
+            self.active = None;
+            self.waiting_since_ms = None;
             self.sounds.play(self.audio, SoundKind::Delete);
-            delete_note(self.storage, self.index, self.detail_num)?;
-            let _ = self.state.apply(Transition::RecSingle);
+            let _ = self.state.apply(Transition::CancelConfirmed);
         }
-        if rec == ButtonEvent::Long || rec == ButtonEvent::Double || pwr == ButtonEvent::Single {
-            let _ = self.state.apply(Transition::DeleteCancelled);
+        if rec == ButtonEvent::Long || rec == ButtonEvent::Double {
+            let _ = self.state.apply(Transition::CancelDismissed);
         }
         Ok(())
     }
@@ -314,11 +355,7 @@ where
                     self.sounds.enabled = !self.sounds.enabled;
                     self.sounds.set_enabled(self.sounds.enabled);
                 }
-                1 => {
-                    self.transfer_ip = "192.168.0.42".into();
-                    let _ = self.state.apply(Transition::OpenTransfer);
-                }
-                2 => {
+                1 | 2 => {
                     let _ = self.state.apply(Transition::OpenDeviceInfo);
                 }
                 _ => {}
@@ -330,16 +367,8 @@ where
         Ok(())
     }
 
-    fn handle_transfer(&mut self, rec: ButtonEvent) -> CoreResult<()> {
-        if rec == ButtonEvent::Long || rec == ButtonEvent::Double {
-            self.transfer_ip.clear();
-            let _ = self.state.apply(Transition::ExitTransfer);
-        }
-        Ok(())
-    }
-
     fn handle_nav_back(&mut self, rec: ButtonEvent, ev: Transition) -> CoreResult<()> {
-        if rec == ButtonEvent::Long || rec == ButtonEvent::Double {
+        if rec == ButtonEvent::Long || rec == ButtonEvent::Double || rec == ButtonEvent::Single {
             self.sounds.play(self.audio, SoundKind::Back);
             let _ = self.state.apply(ev);
         }
@@ -373,56 +402,75 @@ where
         let state = self.state.state();
         let warn = self.activity.battery_warning_active(now);
         let error_msg = self.error_msg.clone();
-
-        let detail_tag = self
-            .index
-            .find(self.detail_num)
-            .map(|e| e.tag.clone())
+        let history = self.ledger.recent_labels(5);
+        let history_total = self.ledger.total_paid_label();
+        let price_labels = self.prices.labels();
+        let amount = self
+            .active
+            .as_ref()
+            .map(|r| r.amount_inr.as_str())
+            .unwrap_or(self.default_amount_inr.as_str());
+        let upi_uri = self
+            .active
+            .as_ref()
+            .map(|r| r.uri.clone())
+            .unwrap_or_else(|| {
+                crate::upi::build_upi_uri(
+                    &self.merchant.vpa,
+                    &self.merchant.name,
+                    &self.default_amount_inr,
+                    "Zoop Pay",
+                )
+            });
+        let txn_note = self
+            .active
+            .as_ref()
+            .map(|r| r.note.clone())
             .unwrap_or_default();
-
-        let merchant = "Akash Soni";
-        let vpa = "akash@oksbi";
-        let amount = "100.00";
-        let upi_uri = crate::upi::build_upi_uri(vpa, merchant, amount, "Zoop Pay");
-        let history: Vec<String> = self
-            .index
-            .entries()
-            .iter()
-            .rev()
-            .take(8)
-            .map(|e| format!("#{:03}  {}", e.num, e.tag))
-            .collect();
+        let merchant_name = self.merchant.name.clone();
+        let merchant_vpa = self.merchant.vpa.clone();
+        let txn_count = self.ledger.len();
+        let menu_index = self.menu_index;
+        let settings_index = self.settings_index;
+        let history_index = self.history_index;
+        let price_index = self.price_index;
+        let detail_page = self.detail_page;
+        let sounds_on = self.sounds.enabled;
+        let empty: [String; 0] = [];
 
         let buf = self.display.framebuffer_mut();
         let mut ui = UiContext {
             buf,
             battery_pct: pct,
             firmware_version: FIRMWARE_VERSION,
-            merchant_name: merchant,
-            upi_vpa: vpa,
+            merchant_name: &merchant_name,
+            upi_vpa: &merchant_vpa,
             amount_inr: amount,
             upi_uri: &upi_uri,
-            txn_note: "order",
-            txn_count: self.index.len(),
-            menu_index: self.menu_index,
-            settings_index: self.settings_index,
-            history_index: 0,
+            txn_note: &txn_note,
+            txn_count,
+            menu_index,
+            settings_index,
+            history_index,
             history_lines: &history,
+            history_total: &history_total,
+            price_labels: &price_labels,
+            price_index,
             error_msg: &error_msg,
             device_rtc: "time not set",
-            sounds_on: self.sounds.enabled,
+            sounds_on,
             sync_done: 0,
             sync_pending: 0,
-            note_count: self.index.len(),
-            tag_index: self.tag_index,
-            tags: self.tags.tags(),
-            list_filter: &self.list_filter,
+            note_count: txn_count,
+            tag_index: 0,
+            tags: &empty,
+            list_filter: "All",
             list_scroll: 0,
-            detail_num: self.detail_num,
-            detail_tag: &detail_tag,
-            detail_lines: &[],
-            detail_page: self.detail_page,
-            transfer_ip: &self.transfer_ip,
+            detail_num: self.detail_txn,
+            detail_tag: "",
+            detail_lines: &empty,
+            detail_page,
+            transfer_ip: "",
             transcribe_done: 0,
             transcribe_pending: 0,
         };
@@ -453,8 +501,6 @@ mod tests {
         MockClock,
         MockTime,
         MockBatteryAdc,
-        IndexStore,
-        TagStore,
     ) {
         (
             MockStorage::new().expect("s"),
@@ -464,35 +510,80 @@ mod tests {
             MockClock::default(),
             MockTime::default(),
             MockBatteryAdc::with_voltage(4.1),
-            IndexStore::new(),
-            TagStore::new(),
         )
     }
 
     #[test]
-    fn boot_loads_stores_and_renders_idle() {
-        let (
-            storage,
-            mut display,
-            mut audio,
-            _buttons,
-            clock,
-            mut time,
-            mut adc,
-            mut index,
-            mut tags,
-        ) = test_app();
-        let mut app = App::new(
-            &storage,
-            &mut display,
-            &mut audio,
-            &mut time,
-            &mut adc,
-            &mut index,
-            &mut tags,
-        );
+    fn boot_renders_idle() {
+        let (storage, mut display, mut audio, _buttons, clock, mut time, mut adc) = test_app();
+        let mut app = App::new(&storage, &mut display, &mut audio, &mut time, &mut adc);
         app.boot(&clock).expect("boot");
         assert_eq!(app.state.state(), AppState::Idle);
         assert_eq!(app.last_screen, ScreenId::Idle);
+    }
+
+    #[test]
+    fn rec_opens_history_from_home() {
+        let (storage, mut display, mut audio, mut buttons, mut clock, mut time, mut adc) =
+            test_app();
+        let mut app = App::new(&storage, &mut display, &mut audio, &mut time, &mut adc);
+        app.ledger.push_paid("100.00", "a");
+        app.ledger.push_paid("50.00", "b");
+        app.boot(&clock).expect("boot");
+
+        // REC tap (press + release through debounce)
+        let mut t = 0u64;
+        buttons.pins_mut().rec = true;
+        t += 10;
+        clock.now_ms = t;
+        app.tick(&mut buttons, &clock).expect("tick");
+        t += 10;
+        clock.now_ms = t;
+        app.tick(&mut buttons, &clock).expect("tick");
+        buttons.pins_mut().rec = false;
+        for _ in 0..15 {
+            t += 50;
+            clock.now_ms = t;
+            app.tick(&mut buttons, &clock).expect("tick");
+            if app.state.state() == AppState::History {
+                break;
+            }
+        }
+        assert_eq!(app.state.state(), AppState::History);
+        assert_eq!(app.ledger.total_paid_label(), "Rs 150");
+    }
+
+    #[test]
+    fn priced_collect_flow() {
+        let (storage, mut display, mut audio, mut buttons, mut clock, mut time, mut adc) =
+            test_app();
+        let mut app = App::new(&storage, &mut display, &mut audio, &mut time, &mut adc);
+        app.boot(&clock).expect("boot");
+
+        // Jump to price pick
+        let _ = app.state.apply(Transition::OpenPrices);
+        app.price_index = 1; // 100.00
+        app.start_priced_collect(0).expect("qr");
+        assert_eq!(app.state.state(), AppState::ShowQr);
+        assert!(app.active.as_ref().unwrap().uri.contains("am=100.00"));
+
+        let mut t = 0u64;
+        buttons.pins_mut().rec = true;
+        t += 10;
+        clock.now_ms = t;
+        app.tick(&mut buttons, &clock).expect("tick");
+        buttons.pins_mut().rec = false;
+        for _ in 0..20 {
+            t += 50;
+            clock.now_ms = t;
+            app.tick(&mut buttons, &clock).expect("tick");
+            if app.state.state() == AppState::Waiting || app.state.state() == AppState::Success {
+                break;
+            }
+        }
+        assert!(matches!(
+            app.state.state(),
+            AppState::Waiting | AppState::Success
+        ));
     }
 }

@@ -35,7 +35,7 @@ impl ActivityTimer {
     pub fn should_ultra_sleep(&self, state: AppState, now_ms: u64) -> bool {
         if matches!(
             state,
-            AppState::Recording | AppState::Transfer | AppState::Error
+            AppState::ShowQr | AppState::Waiting | AppState::PricePick | AppState::Error
         ) {
             return false;
         }
@@ -113,11 +113,11 @@ mod tests {
     }
 
     #[test]
-    fn no_sleep_during_recording_or_transfer() {
+    fn no_sleep_during_qr_or_waiting() {
         let mut t = ActivityTimer::new(120_000);
         t.reset_activity(0);
-        assert!(!t.should_ultra_sleep(AppState::Recording, 200_000));
-        assert!(!t.should_ultra_sleep(AppState::Transfer, 200_000));
+        assert!(!t.should_ultra_sleep(AppState::ShowQr, 200_000));
+        assert!(!t.should_ultra_sleep(AppState::Waiting, 200_000));
     }
 
     #[test]

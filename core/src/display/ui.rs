@@ -1,13 +1,10 @@
 //! UPI payment screens for 200×200 e-Paper — calm, QR-first collect flow.
-//!
-//! Maps existing `AppState` names to payment UX (hardware buttons unchanged):
-//! Idle → home · Recording → show QR · Saved → waiting · TagSelect → success · …
 
 use crate::display::draw::{
-    draw_battery_ring, draw_check, draw_header, draw_hints, draw_select_row, draw_soft_header,
-    draw_str, draw_str_centered, fill_circle, stroke_circle, text_width, BLACK, HEIGHT, WIDTH,
+    draw_check, draw_header, draw_hints, draw_select_row, draw_soft_header, draw_str,
+    draw_str_centered, fill_circle, stroke_circle, BLACK, HEIGHT, WIDTH,
 };
-use crate::display::qr::draw_qr_centered;
+use crate::display::qr::{draw_qr_centered, draw_qr_fullscreen};
 use crate::state::AppState;
 use crate::upi::format_amount_label;
 
@@ -23,11 +20,9 @@ pub fn clear_screen(buf: &mut [u8]) {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScreenId {
     Idle,
-    /// Show UPI QR for customer to scan
+    PricePick,
     ShowQr,
-    /// Awaiting bank confirmation
     Waiting,
-    /// Payment received
     Success,
     Menu,
     Settings,
@@ -41,43 +36,32 @@ pub enum ScreenId {
     UltraSleep,
     WifiConnecting,
     Syncing,
-    /// Legacy aliases kept for call sites
-    Recording,
-    Saved,
-    TagSelect,
-    NoteList,
-    NoteDetail,
-    DeleteConfirm,
-    Transfer,
-    Transcribing,
-    WifiConnectingAlias,
 }
 
 pub struct UiContext<'a> {
     pub buf: &'a mut [u8],
     pub battery_pct: Option<u8>,
     pub firmware_version: &'a str,
-    /// Merchant / payee display name
     pub merchant_name: &'a str,
-    /// VPA e.g. akash@oksbi
     pub upi_vpa: &'a str,
-    /// Amount string e.g. "250.00" (empty = any)
     pub amount_inr: &'a str,
-    /// Full UPI URI for QR (pre-built)
     pub upi_uri: &'a str,
-    /// Last / current txn id or order note
     pub txn_note: &'a str,
     pub txn_count: usize,
     pub menu_index: usize,
     pub settings_index: usize,
     pub history_index: usize,
     pub history_lines: &'a [String],
+    /// Sum label for history screen e.g. `Rs 1530`
+    pub history_total: &'a str,
+    /// Predefined price labels for PricePick (`Rs 100`, …)
+    pub price_labels: &'a [String],
+    pub price_index: usize,
     pub error_msg: &'a str,
     pub device_rtc: &'a str,
     pub sounds_on: bool,
     pub sync_done: usize,
     pub sync_pending: usize,
-    // Kept so older call sites compile during transition
     pub note_count: usize,
     pub tag_index: usize,
     pub tags: &'a [String],
@@ -97,16 +81,17 @@ impl UiContext<'_> {
         clear_screen(self.buf);
         match state {
             AppState::Idle => self.show_home(),
-            AppState::Recording => self.show_qr(),
-            AppState::Saved => self.show_waiting(),
-            AppState::TagSelect => self.show_success(),
+            AppState::PricePick => self.show_price_pick(),
+            AppState::ShowQr => self.show_priced_qr(),
+            AppState::Waiting => self.show_waiting(),
+            AppState::Success => self.show_success(),
             AppState::Menu => self.show_menu(),
             AppState::Settings => self.show_settings(),
             AppState::DeviceInfo => self.show_device_info(),
-            AppState::NoteList | AppState::TagBrowser => self.show_history(),
-            AppState::NoteDetail => self.show_history_detail(),
-            AppState::DeleteConfirm => self.show_cancel_confirm(),
-            AppState::Transfer => self.show_merchant(),
+            AppState::History => self.show_history(),
+            AppState::HistoryDetail => self.show_history_detail(),
+            AppState::CancelConfirm => self.show_cancel_confirm(),
+            AppState::Merchant => self.show_merchant(),
             AppState::Error => self.show_error_screen(self.error_msg),
         }
     }
@@ -115,42 +100,59 @@ impl UiContext<'_> {
         format_amount_label(self.amount_inr)
     }
 
-    /// Home — ready to collect
+    /// Home — max-coverage UPI QR (customer pays any amount).
     fn show_home(&mut self) -> ScreenId {
-        let cx = (WIDTH / 2) as i32;
-        if let Some(pct) = self.battery_pct {
-            draw_battery_ring(self.buf, WIDTH as i32 - 28, 28, pct);
-            let label = format!("{pct}%");
-            let lw = text_width(&label, 1);
-            draw_str(self.buf, WIDTH as i32 - 28 - lw / 2, 46, &label, 1, BLACK);
-        }
-        draw_str_centered(self.buf, cx, 58, "ZOOP PAY", 1, BLACK);
-        draw_str_centered(self.buf, cx, 78, self.merchant_name, 1, BLACK);
-        draw_str_centered(self.buf, cx, 108, &self.amount_label(), 2, BLACK);
-        draw_str_centered(self.buf, cx, 138, "hold REC for QR", 1, BLACK);
-        let n = if self.txn_count == 1 {
-            "1 payment".to_string()
-        } else {
-            format!("{} payments", self.txn_count)
-        };
-        draw_str_centered(self.buf, cx, 156, &n, 1, BLACK);
-        draw_hints(self.buf, "Show QR", "Menu");
-        ScreenId::Idle
-    }
-
-    /// Customer scans this UPI QR
-    fn show_qr(&mut self) -> ScreenId {
-        draw_soft_header(self.buf, "SCAN UPI", Some(&self.amount_label()));
         let uri = if self.upi_uri.is_empty() {
             "upi://pay?pa=demo@upi&pn=Zoop&cu=INR"
         } else {
             self.upi_uri
         };
-        // QR sits under soft header; leave strip for amount already in header
-        if draw_qr_centered(self.buf, uri, 30).is_err() {
+        if draw_qr_fullscreen(self.buf, uri).is_err() {
+            let cx = (WIDTH / 2) as i32;
+            draw_str_centered(self.buf, cx, 96, "QR too long", 1, BLACK);
+        }
+        ScreenId::Idle
+    }
+
+    /// Pick from predefined prices (2-column grid).
+    fn show_price_pick(&mut self) -> ScreenId {
+        draw_soft_header(self.buf, "AMOUNT", None);
+        let cx = (WIDTH / 2) as i32;
+        if self.price_labels.is_empty() {
+            draw_str_centered(self.buf, cx, 90, "no prices", 1, BLACK);
+            draw_hints(self.buf, "Back", "");
+            return ScreenId::PricePick;
+        }
+        let col_w = (WIDTH as i32 - MARGIN * 2) / 2;
+        let row_h = 28i32;
+        let y0 = CONTENT_TOP + 2;
+        for (i, label) in self.price_labels.iter().enumerate().take(6) {
+            let col = (i % 2) as i32;
+            let row = (i / 2) as i32;
+            let x = MARGIN + col * col_w;
+            let y = y0 + row * row_h;
+            if i == self.price_index {
+                crate::display::draw::stroke_rect(self.buf, x, y, col_w - 4, row_h - 4, 1, BLACK);
+            }
+            draw_str(self.buf, x + 6, y + 8, label, 1, BLACK);
+        }
+        draw_hints(self.buf, "QR", "Next");
+        ScreenId::PricePick
+    }
+
+    /// Amount-locked QR for a selected preset price.
+    fn show_priced_qr(&mut self) -> ScreenId {
+        draw_soft_header(self.buf, "PAY", Some(&self.amount_label()));
+        let uri = if self.upi_uri.is_empty() {
+            "upi://pay?pa=demo@upi&pn=Zoop&cu=INR"
+        } else {
+            self.upi_uri
+        };
+        // Slightly larger than chrome QR — leave room for header + hints
+        if draw_qr_centered(self.buf, uri, 28).is_err() {
             draw_str_centered(self.buf, (WIDTH / 2) as i32, 100, "QR too long", 1, BLACK);
         }
-        draw_hints(self.buf, "Wait", "Cancel");
+        draw_hints(self.buf, "Done", "Back");
         ScreenId::ShowQr
     }
 
@@ -178,7 +180,7 @@ impl UiContext<'_> {
     }
 
     fn show_menu(&mut self) -> ScreenId {
-        const ITEMS: [&str; 4] = ["Collect", "History", "Merchant", "Settings"];
+        const ITEMS: [&str; 4] = ["Prices", "History", "Merchant", "Settings"];
         draw_soft_header(self.buf, "MENU", None);
         let y0 = CONTENT_TOP + 4;
         for (i, item) in ITEMS.iter().enumerate() {
@@ -224,19 +226,23 @@ impl UiContext<'_> {
     }
 
     fn show_history(&mut self) -> ScreenId {
-        draw_soft_header(self.buf, "HISTORY", None);
+        draw_soft_header(self.buf, "RECENT", Some(self.history_total));
         let cx = (WIDTH / 2) as i32;
         if self.history_lines.is_empty() {
             draw_str_centered(self.buf, cx, 90, "no payments yet", 1, BLACK);
         } else {
             let mut y = CONTENT_TOP + 4;
-            let start = self.history_index.min(self.history_lines.len().saturating_sub(1));
+            let start = self
+                .history_index
+                .min(self.history_lines.len().saturating_sub(1));
             for line in self.history_lines.iter().skip(start).take(5) {
                 draw_str(self.buf, MARGIN, y, line, 1, BLACK);
                 y += 22;
             }
         }
-        draw_hints(self.buf, "Open", "Next");
+        let total_line = format!("TOTAL  {}", self.history_total);
+        draw_str(self.buf, MARGIN, HINTS_Y - 18, &total_line, 1, BLACK);
+        draw_hints(self.buf, "Back", "Next");
         ScreenId::HistoryList
     }
 
@@ -260,7 +266,7 @@ impl UiContext<'_> {
     fn show_cancel_confirm(&mut self) -> ScreenId {
         draw_soft_header(self.buf, "CANCEL", None);
         let cx = (WIDTH / 2) as i32;
-        draw_str_centered(self.buf, cx, 80, "stop this QR?", 1, BLACK);
+        draw_str_centered(self.buf, cx, 80, "cancel this pay?", 1, BLACK);
         draw_str_centered(self.buf, cx, 108, &self.amount_label(), 1, BLACK);
         draw_hints(self.buf, "Yes", "Back");
         ScreenId::CancelConfirm
@@ -272,7 +278,7 @@ impl UiContext<'_> {
         draw_str_centered(self.buf, cx, 56, self.merchant_name, 1, BLACK);
         draw_str_centered(self.buf, cx, 84, self.upi_vpa, 1, BLACK);
         draw_str_centered(self.buf, cx, 120, "static VPA", 1, BLACK);
-        draw_str_centered(self.buf, cx, 142, "use Collect for QR", 1, BLACK);
+        draw_str_centered(self.buf, cx, 142, "QR stays on Home", 1, BLACK);
         draw_hints(self.buf, "Back", "");
         ScreenId::Merchant
     }
@@ -338,6 +344,7 @@ mod tests {
         buf: &'a mut [u8],
         uri: &'a str,
         history: &'a [String],
+        prices: &'a [String],
         tags: &'a [String],
     ) -> UiContext<'a> {
         UiContext {
@@ -354,6 +361,9 @@ mod tests {
             settings_index: 0,
             history_index: 0,
             history_lines: history,
+            history_total: "Rs 430",
+            price_labels: prices,
+            price_index: 1,
             error_msg: "PAY FAIL",
             device_rtc: "set",
             sounds_on: true,
@@ -375,13 +385,40 @@ mod tests {
     }
 
     #[test]
-    fn home_renders_idle() {
+    fn home_renders_fullscreen_qr() {
         let mut buf = vec![0xFF; BYTES];
         let uri = build_upi_uri("akash@oksbi", "Akash Soni", "100.00", "Zoop");
         let history = vec![];
+        let prices = vec![];
         let tags = vec![];
-        let mut ui = ctx(&mut buf, &uri, &history, &tags);
+        let mut ui = ctx(&mut buf, &uri, &history, &prices, &tags);
         assert_eq!(ui.render(AppState::Idle), ScreenId::Idle);
+        let mut dark = 0;
+        for y in 20..180 {
+            for x in 20..180 {
+                if get_pixel(&buf, x, y) == BLACK {
+                    dark += 1;
+                }
+            }
+        }
+        assert!(dark > 200, "home should paint a large QR, dark={dark}");
+    }
+
+    #[test]
+    fn price_pick_and_priced_qr() {
+        let mut buf = vec![0xFF; BYTES];
+        let uri = build_upi_uri("akash@oksbi", "Akash Soni", "200.00", "Zoop");
+        let history = vec![];
+        let prices = vec![
+            "Rs 50".into(),
+            "Rs 100".into(),
+            "Rs 200".into(),
+            "Rs 500".into(),
+        ];
+        let tags = vec![];
+        let mut ui = ctx(&mut buf, &uri, &history, &prices, &tags);
+        assert_eq!(ui.render(AppState::PricePick), ScreenId::PricePick);
+        assert_eq!(ui.render(AppState::ShowQr), ScreenId::ShowQr);
     }
 
     #[test]
@@ -389,9 +426,10 @@ mod tests {
         let mut buf = vec![0xFF; BYTES];
         let uri = build_upi_uri("akash@oksbi", "Akash Soni", "100.00", "Zoop");
         let history = vec![];
+        let prices = vec![];
         let tags = vec![];
-        let mut ui = ctx(&mut buf, &uri, &history, &tags);
-        assert_eq!(ui.render(AppState::Recording), ScreenId::ShowQr);
+        let mut ui = ctx(&mut buf, &uri, &history, &prices, &tags);
+        assert_eq!(ui.render(AppState::ShowQr), ScreenId::ShowQr);
         let mut dark = 0;
         for y in 30..170 {
             for x in 30..170 {
@@ -408,8 +446,9 @@ mod tests {
         let mut buf = vec![0xFF; BYTES];
         let uri = "";
         let history = vec![];
+        let prices = vec![];
         let tags = vec![];
-        let mut ui = ctx(&mut buf, uri, &history, &tags);
+        let mut ui = ctx(&mut buf, uri, &history, &prices, &tags);
         ui.menu_index = 1;
         assert_eq!(ui.render(AppState::Menu), ScreenId::Menu);
         assert_eq!(get_pixel(&buf, 12, 75), BLACK);

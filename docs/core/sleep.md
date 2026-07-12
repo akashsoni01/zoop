@@ -19,7 +19,7 @@ flowchart LR
 
 ## Responsibilities
 
-- **Does:** track last activity; decide ultra-sleep; battery warning overlay window; `WakeCause` from pin holds
+- **Does:** track last activity; decide ultra-sleep (blocked on `ShowQr`, `Waiting`, `Error`); battery warning overlay; `WakeCause` from pin holds
 - **Does not:** enter deep sleep hardware
 
 ## Key types / functions

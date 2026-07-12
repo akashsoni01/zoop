@@ -45,6 +45,8 @@ Re-exports (selected):
 | `ActivityTimer`, `WakeCause` | `sleep` |
 | `SoundsPolicy` | `sounds` |
 | `AppState`, `ButtonEvent`, `StateMachine`, `Transition` | `state` |
+| `MerchantProfile`, `PaymentRequest`, `PaymentLedger`, … | `payment` |
+| `build_upi_uri`, `format_amount_label` | `upi` |
 | storage types | `storage` |
 | `TimeSyncState`, `NTP_SERVERS` | `time` |
 | transcription config / helpers | `transcribe` |

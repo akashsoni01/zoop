@@ -1,7 +1,7 @@
 # tests/zoop_sim_flow.rs
 
 - **Path:** `core/tests/zoop_sim_flow.rs`
-- **Purpose:** Automated counterpart to `zoop-sim` — advances time and buttons through a menu/navigation smoke path and asserts expected `AppState`s.
+- **Purpose:** Automated counterpart to `zoop-sim` — advances time and buttons through menu + UPI collect and asserts Idle with one ledger payment.
 
 ## Component in architecture
 
@@ -17,7 +17,7 @@ flowchart LR
 
 ## Responsibilities
 
-Assert sim-like UX transitions on host.
+Assert sim-like collect UX on host.
 
 ## Key types / functions
 

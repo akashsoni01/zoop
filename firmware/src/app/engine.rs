@@ -5,7 +5,6 @@ use zoop_core::app::App;
 use zoop_core::buttons::ButtonPoller;
 use zoop_core::error::CoreResult;
 use zoop_core::io::Clock;
-use zoop_core::storage::{IndexStore, TagStore};
 
 use crate::audio::Es8311Audio;
 use crate::board::rtc::RtcChip;
@@ -61,8 +60,6 @@ pub struct FirmwareEngine {
     pub portal: TransferPortal,
     pub whisper: WhisperClient,
     pub time: FirmwareTime,
-    pub index: IndexStore,
-    pub tags: TagStore,
     pub clock: EspClock,
 }
 
@@ -89,8 +86,6 @@ impl FirmwareEngine {
                 ntp: NtpClient::new(),
                 rtc,
             },
-            index: IndexStore::new(),
-            tags: TagStore::new(),
             clock: EspClock { now_ms: 0 },
         }
     }
@@ -102,17 +97,15 @@ impl FirmwareEngine {
             audio,
             time,
             battery,
-            index,
-            tags,
             clock,
             ..
         } = self;
-        let mut app = App::new(storage, display, audio, time, battery, index, tags);
+        let mut app = App::new(storage, display, audio, time, battery);
         app.boot(clock)?;
         info!(
-            "app: boot state={:?} notes={}",
+            "app: boot state={:?} payments={}",
             app.state.state(),
-            app.index.len()
+            app.ledger.len()
         );
         Ok(())
     }
@@ -126,14 +119,12 @@ impl FirmwareEngine {
             audio,
             time,
             battery,
-            index,
-            tags,
             buttons,
             sleep,
             clock,
             ..
         } = self;
-        let mut app = App::new(storage, display, audio, time, battery, index, tags);
+        let mut app = App::new(storage, display, audio, time, battery);
         app.tick(buttons, clock)?;
         if sleep.should_sleep(app.state.state(), now_ms) {
             sleep.enter_ultra_sleep();

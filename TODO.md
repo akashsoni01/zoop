@@ -1,13 +1,14 @@
-# Zoop — Palma Notes in Rust (IoT)
+# Zoop — Zoop Pay (UPI on e-Paper)
 
-Port of the C/Arduino [`pala_note`](./pala_note/) firmware to **Rust** on the Waveshare ESP32-S3 e-Paper 1.54 board.
+Rust firmware for **UPI collect** on the Waveshare ESP32-S3 e-Paper 1.54 board. Evolved from a Palma Notes / [`pala_note`](./pala_note/) voice-notepad port; primary UX is now payment QR + history.
 
 | | |
 | --- | --- |
-| Reference | `pala_note/` — v1.0 (2026-05-24) |
-| Target board | Waveshare **ESP32-S3-ePaper-1.54** (`S3_ePaper_1_54` in `board_cfg.h`) |
-| Hardware guide | [`README.md`](./README.md) — BOM, kit combos, upgrades |
-| Firmware version | `v1.0` (match reference until Rust port diverges) |
+| Product | Zoop Pay — hold REC → UPI QR → waiting → paid |
+| Target board | Waveshare **ESP32-S3-ePaper-1.54** |
+| Hardware guide | [`README.md`](./README.md) |
+| Architecture | [`docs/architecture.md`](./docs/architecture.md) |
+| Firmware version | `v1.0` |
 
 ### Implementation status
 
@@ -16,7 +17,7 @@ Port of the C/Arduino [`pala_note`](./pala_note/) firmware to **Rust** on the Wa
 | `[x]` | **Done (host-verified)** — logic in `core/` with passing tests, or firmware module compiles with BSP stub wired |
 | `[ ] HIL` | **Hardware-in-the-loop** — needs physical Waveshare board (or enclosure fit) to verify end-to-end |
 
-**Host tests:** `cargo test --workspace --exclude zoop-firmware` → **81 passed** (79 unit + 2 integration: `integration_offline.rs`, `zoop_sim_flow.rs`).  
+**Host tests:** `cargo test --workspace --exclude zoop-firmware` → **86 passed** (84 unit + 2 integration).  
 **Firmware:** `cd firmware && cargo build` → compiles for `xtensa-esp32s3-espidf` (BSP stubs log until HIL).
 
 ---

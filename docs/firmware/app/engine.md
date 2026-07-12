@@ -1,7 +1,7 @@
 # app/engine.rs
 
 - **Path:** `firmware/src/app/engine.rs`
-- **Purpose:** Device-side application wrapper. Owns BSP stubs, `EspClock`, `FirmwareTime` (RTC+NTP), index/tag stores, and a `zoop_core::App`. `boot`/`tick` forward into core; full peripheral wiring awaits HIL.
+- **Purpose:** Device-side application wrapper. Owns BSP stubs, `EspClock`, `FirmwareTime` (RTC+NTP), and drives `zoop_core::App` (payment ledger lives inside App). `boot`/`tick` forward into core; full peripheral wiring awaits HIL.
 
 ## Component in architecture
 
@@ -22,42 +22,24 @@ flowchart TB
 ## Responsibilities
 
 - **Does:** construct core `App`, expose `boot`/`tick`, provide `Clock`/`TimeSource` stubs
-- **Does not:** raw GPIO (other modules)
+- **Does not:** raw GPIO (other modules); note: stub recreates `App` each tick (state not yet persisted across ticks — HIL follow-up)
 
 ## Key types / functions
 
 | Item | Role |
 |------|------|
-| `EspClock` | Monotonic `now_ms` stub |
-| `FirmwareTime` | UTC cache + `NtpClient` + `RtcChip`; implements `TimeSource` |
-| `FirmwareEngine::new` | Wire storage/display/audio/rtc/whisper |
-| `boot` / `tick` | Delegate to core |
-
-## Data / control flow
-
-```mermaid
-sequenceDiagram
-  participant Main
-  participant Eng as FirmwareEngine
-  participant App as zoop_core::App
-  Main->>Eng: boot
-  Eng->>App: boot(clock)
-  Main->>Eng: tick
-  Eng->>App: tick(buttons, clock)
-```
+| `EspClock` | Monotonic ms stub |
+| `FirmwareTime` | RTC + NTP `TimeSource` |
+| `FirmwareEngine` | Owns BSP + `boot` / `tick` |
 
 ## Dependencies
 
-Outbound: nearly all firmware BSP modules + `zoop_core`. Inbound: `main`.
-
-## Tests
-
-Firmware excluded from host CI. Build-only.
+`zoop_core::App`, board/audio/display/input/network/power/storage stubs.
 
 ## Status
 
-HIL stub.
+Stub / HIL pending.
 
 ## Related
 
-[../../core/app.md](../../core/app.md), [../main.md](../main.md), [../../architecture.md](../../architecture.md)
+[../README.md](../README.md), [../../core/app.md](../../core/app.md), [../../architecture.md](../../architecture.md)

@@ -1,7 +1,7 @@
 # tests/integration_offline.rs
 
 - **Path:** `core/tests/integration_offline.rs`
-- **Purpose:** End-to-end offline recording/tagging flow on mocks — proves `App` + storage + record integrate without network or hardware.
+- **Purpose:** End-to-end offline UPI collect flow on mocks — hold REC → QR → waiting → success → history detail without network or hardware.
 
 ## Component in architecture
 
@@ -9,16 +9,16 @@
 flowchart LR
   T["integration_offline"]
   APP["App"]
-  REC["record"]
+  PAY["payment ledger"]
   STORE["MockStorage"]
-  T --> APP --> REC & STORE
+  T --> APP --> PAY & STORE
   style T fill:#f96,stroke:#333,stroke-width:3px
 ```
 
 ## Responsibilities
 
-- **Does:** scripted hold-REC → finalize → tag → assert index/files
-- **Does not:** WiFi/Whisper
+- **Does:** scripted collect → assert ledger + History navigation
+- **Does not:** WiFi / bank APIs
 
 ## Key types / functions
 
@@ -40,4 +40,4 @@ Host-verified.
 
 ## Related
 
-[README.md](README.md), [../record.md](../record.md), [../../architecture.md](../../architecture.md)
+[zoop_sim_flow.md](zoop_sim_flow.md), [../app.md](../app.md), [../payment.md](../payment.md)

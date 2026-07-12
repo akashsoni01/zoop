@@ -2,7 +2,7 @@
 
 Per-file reference for the Zoop workspace. Each page documents path, purpose, architecture placement (Mermaid), public API, dependencies, tests, status, and related docs.
 
-**Start with the system map:** [architecture.md](architecture.md) — host vs device crates, offline record flow, sync/portal flow, and the full state machine.
+**Start with the system map:** [architecture.md](architecture.md) — host vs device crates, UPI collect flow, and the payment state machine.
 
 **See / review the E-Ink UI:** [core/ui-capabilities.md](core/ui-capabilities.md) — **UPI payment screens**, QR on e-Ink, and `zoop-ui-preview`.
 
@@ -70,6 +70,8 @@ Overview: [core/README.md](core/README.md) · **UI capabilities:** [core/ui-capa
 |-----|--------|
 | [lib.md](core/lib.md) | `core/src/lib.rs` |
 | [app.md](core/app.md) | `core/src/app.rs` |
+| [payment.md](core/payment.md) | `core/src/payment.rs` |
+| [upi.md](core/upi.md) | `core/src/upi.rs` |
 | [battery.md](core/battery.md) | `core/src/battery.rs` |
 | [buttons.md](core/buttons.md) | `core/src/buttons.rs` |
 | [error.md](core/error.md) | `core/src/error.rs` |
@@ -85,7 +87,6 @@ Overview: [core/README.md](core/README.md) · **UI capabilities:** [core/ui-capa
 | [time.md](core/time.md) | `core/src/time.rs` |
 | [transcribe.md](core/transcribe.md) | `core/src/transcribe.rs` |
 | [wav.md](core/wav.md) | `core/src/wav.rs` |
-| [upi.md](core/upi.md) | `core/src/upi.rs` |
 | [whisper_parse.md](core/whisper_parse.md) | `core/src/whisper_parse.rs` |
 
 ### Display

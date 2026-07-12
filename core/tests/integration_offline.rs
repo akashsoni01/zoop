@@ -1,11 +1,10 @@
-//! Full offline loop: record → tag → list → play → delete (host-verified).
+//! Offline UPI home QR + REC history flow (host-verified).
 
 use zoop_core::app::App;
 use zoop_core::buttons::ButtonPoller;
 use zoop_core::mock::{MockAudio, MockBatteryAdc, MockButtons, MockClock, MockDisplay, MockTime};
-use zoop_core::paths::note_path;
 use zoop_core::state::AppState;
-use zoop_core::storage::{load_index, FileStorage, IndexStore, MockStorage, TagStore};
+use zoop_core::storage::MockStorage;
 
 fn advance(
     clock: &mut MockClock,
@@ -18,7 +17,7 @@ fn advance(
 }
 
 #[test]
-fn offline_record_tag_list_play_delete() {
+fn offline_home_qr_and_rec_history() {
     let storage = MockStorage::new().expect("storage");
     let mut display = MockDisplay::new();
     let mut audio = MockAudio::new();
@@ -28,120 +27,45 @@ fn offline_record_tag_list_play_delete() {
         utc: Some("2026-07-11T14:00:00Z".to_string()),
     };
     let mut adc = MockBatteryAdc::with_voltage(4.1);
-    let mut index = IndexStore::new();
-    let mut tags = TagStore::new();
 
-    let mut app = App::new(
-        &storage,
-        &mut display,
-        &mut audio,
-        &mut time,
-        &mut adc,
-        &mut index,
-        &mut tags,
-    );
+    let mut app = App::new(&storage, &mut display, &mut audio, &mut time, &mut adc);
+    app.ledger.push_paid("250.00", "a");
+    app.ledger.push_paid("80.00", "b");
+    app.ledger.push_paid("120.00", "c");
     app.boot(&clock).expect("boot");
     assert_eq!(app.state.state(), AppState::Idle);
+    assert_eq!(app.last_screen, zoop_core::display::ui::ScreenId::Idle);
 
     let mut t = 0u64;
 
-    // Hold REC → record
+    // REC tap → History
     buttons.pins_mut().rec = true;
-    for _ in 0..30 {
-        t += 50;
-        advance(&mut clock, &mut buttons, &mut app, t);
-    }
-    assert_eq!(app.state.state(), AppState::Recording);
-
+    t += 10;
+    advance(&mut clock, &mut buttons, &mut app, t);
+    t += 10;
+    advance(&mut clock, &mut buttons, &mut app, t);
     buttons.pins_mut().rec = false;
     for _ in 0..15 {
-        t += 100;
+        t += 50;
         advance(&mut clock, &mut buttons, &mut app, t);
-        if app.state.state() == AppState::TagSelect {
+        if app.state.state() == AppState::History {
             break;
         }
     }
-    assert_eq!(app.state.state(), AppState::TagSelect);
+    assert_eq!(app.state.state(), AppState::History);
+    assert_eq!(app.ledger.total_paid_label(), "Rs 450");
 
-    // Save tag (long REC) — release as soon as Idle to avoid accidental re-record
+    // REC again → back to Idle (fullscreen QR)
     buttons.pins_mut().rec = true;
+    t += 10;
+    advance(&mut clock, &mut buttons, &mut app, t);
+    buttons.pins_mut().rec = false;
     for _ in 0..15 {
         t += 50;
         advance(&mut clock, &mut buttons, &mut app, t);
         if app.state.state() == AppState::Idle {
-            buttons.pins_mut().rec = false;
             break;
-        }
-    }
-    if app.state.state() != AppState::Idle {
-        buttons.pins_mut().rec = false;
-        for _ in 0..10 {
-            t += 50;
-            advance(&mut clock, &mut buttons, &mut app, t);
         }
     }
     assert_eq!(app.state.state(), AppState::Idle);
-    assert_eq!(app.index.len(), 1);
-
-    // Menu (PWR single needs debounce)
-    buttons.pins_mut().pwr = true;
-    t += 10;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    t += 10;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    buttons.pins_mut().pwr = false;
-    t += 50;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    assert_eq!(app.state.state(), AppState::Menu);
-
-    // Open notes (REC single)
-    buttons.pins_mut().rec = true;
-    t += 10;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    buttons.pins_mut().rec = false;
-    t += 250;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    t += 250;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    assert_eq!(app.state.state(), AppState::NoteList);
-
-    // Open detail (REC single)
-    buttons.pins_mut().rec = true;
-    t += 10;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    buttons.pins_mut().rec = false;
-    t += 250;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    t += 250;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    assert_eq!(app.state.state(), AppState::NoteDetail);
-
-    // Long REC → delete confirm
-    buttons.pins_mut().rec = true;
-    for _ in 0..15 {
-        t += 50;
-        advance(&mut clock, &mut buttons, &mut app, t);
-        if app.state.state() == AppState::DeleteConfirm {
-            break;
-        }
-    }
-    buttons.pins_mut().rec = false;
-    t += 50;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    assert_eq!(app.state.state(), AppState::DeleteConfirm);
-
-    // Confirm delete (REC single)
-    buttons.pins_mut().rec = true;
-    t += 10;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    buttons.pins_mut().rec = false;
-    t += 250;
-    advance(&mut clock, &mut buttons, &mut app, t);
-    t += 250;
-    advance(&mut clock, &mut buttons, &mut app, t);
-
-    let mut reloaded = IndexStore::new();
-    load_index(&storage, &mut reloaded).expect("reload");
-    assert!(reloaded.is_empty());
-    assert!(!storage.exists(&note_path(1, "wav")).expect("exists"));
 }

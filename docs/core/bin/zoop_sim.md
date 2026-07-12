@@ -1,7 +1,7 @@
 # bin/zoop_sim.rs
 
 - **Path:** `core/src/bin/zoop_sim.rs`
-- **Purpose:** Offline host harness that boots `App` against mocks and scripts a short UX demo (menu navigation, etc.) without ESP32 hardware. Useful for manual smoke-testing core changes.
+- **Purpose:** Offline host harness that boots `App` against mocks and scripts a short UPI collect demo (menu, hold REC → QR → paid) without ESP32 hardware.
 
 ## Component in architecture
 
@@ -16,7 +16,7 @@ flowchart TB
 
 ## Responsibilities
 
-- **Does:** construct mocks, `boot`, advance clock, inject button presses, print state
+- **Does:** construct mocks, `boot`, advance clock, inject button presses, print state / ledger size
 - **Does not:** flash firmware or open WiFi
 
 ## Key types / functions
@@ -38,11 +38,9 @@ sequenceDiagram
 
 ## Dependencies
 
-Outbound: `zoop_core::{app, buttons, mock, state, storage}`.
+`zoop_core` app, buttons, mock, state, storage.
 
-## Tests
-
-Related flow covered by `core/tests/zoop_sim_flow.rs`. Run binary:
+## How to run
 
 ```bash
 cargo run -p zoop-core --bin zoop-sim
@@ -50,8 +48,8 @@ cargo run -p zoop-core --bin zoop-sim
 
 ## Status
 
-Host-verified (manual + integration).
+Host smoke harness.
 
 ## Related
 
-[../tests/zoop_sim_flow.md](../tests/zoop_sim_flow.md), [../app.md](../app.md), [zoop_ui_preview.md](zoop_ui_preview.md), [../ui-capabilities.md](../ui-capabilities.md), [../../architecture.md](../../architecture.md)
+[zoop_ui_preview.md](zoop_ui_preview.md), [../tests/zoop_sim_flow.md](../tests/zoop_sim_flow.md), [../app.md](../app.md)
