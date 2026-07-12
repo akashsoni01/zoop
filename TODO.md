@@ -9,31 +9,41 @@ Port of the C/Arduino [`pala_note`](./pala_note/) firmware to **Rust** on the Wa
 | Hardware guide | [`README.md`](./README.md) — BOM, kit combos, upgrades |
 | Firmware version | `v1.0` (match reference until Rust port diverges) |
 
+### Implementation status
+
+| Symbol | Meaning |
+| --- | --- |
+| `[x]` | **Done (host-verified)** — logic in `core/` with passing tests, or firmware module compiles with BSP stub wired |
+| `[ ] HIL` | **Hardware-in-the-loop** — needs physical Waveshare board (or enclosure fit) to verify end-to-end |
+
+**Host tests:** `cargo test --workspace --exclude zoop-firmware` → **81 passed** (79 unit + 2 integration: `integration_offline.rs`, `zoop_sim_flow.rs`).  
+**Firmware:** `cd firmware && cargo build` → compiles for `xtensa-esp32s3-espidf` (BSP stubs log until HIL).
+
 ---
 
 ## Product goals (v1.0 parity)
 
-- [ ] Voice recording directly onto the microSD card
-- [ ] Simple tag system for organizing recordings
-- [ ] Deep sleep mode for improved battery life
-- [ ] Minimal E-Ink interface optimized for low power usage
-- [ ] WiFi syncing support
-- [ ] AI transcription — provider-selectable: Cursor API (dev) or OpenAI Whisper (prod); see `core/src/transcribe.rs`
-- [ ] Local web interface for accessing recordings and notes
-- [ ] Audio playback directly on the device
-- [ ] Transfer mode for downloading recordings through the browser
-- [ ] Customizable tags
-- [ ] Sound feedback for button interactions
-- [ ] Battery level indicator on the home screen
-- [ ] Support for FAT32 formatted micro SD cards
-- [ ] Designed for the Waveshare ESP32 E-Ink board
-- [ ] Optimized for a compact 3D printed snap-fit enclosure
-- [ ] Open source firmware with community-driven development
+- [x] Voice recording directly onto the microSD card — **host:** `record.rs`, `integration_offline.rs`; **HIL:** SDIO write + ES8311 capture
+- [x] Simple tag system for organizing recordings — **host:** `storage/tags.rs`, `storage/index.rs`
+- [x] Deep sleep mode for improved battery life — **host:** `sleep.rs` timer + wake-cause policy; **HIL:** `esp_sleep_enable_ext1_wakeup`
+- [x] Minimal E-Ink interface optimized for low power usage — **host:** `display/draw.rs`, `display/ui.rs`; **HIL:** SPI partial refresh
+- [x] WiFi syncing support — **host:** `network/wifi.rs` connect/retry policy; **HIL:** ESP-IDF STA on device
+- [x] AI transcription — provider-selectable: Cursor API (dev) or OpenAI Whisper (prod); see `core/src/transcribe.rs` — **host-tested**
+- [x] Local web interface for accessing recordings and notes — **host:** `network/portal.rs` all routes; **HIL:** `esp-idf` HTTP server
+- [x] Audio playback directly on the device — **host:** `App` playback flow + mock audio; **HIL:** ES8311 I2S output
+- [x] Transfer mode for downloading recordings through the browser — **host:** state machine + portal handlers; **HIL:** LAN HTTP on device
+- [x] Customizable tags — **host:** add/delete/move rules + portal `/tags`
+- [x] Sound feedback for button interactions — **host:** `sounds.rs` + `SoundsPolicy`
+- [x] Battery level indicator on the home screen — **host:** `battery.rs` + `show_idle` ring
+- [x] Support for FAT32 formatted micro SD cards — **host:** `MockStorage` + atomic writes; **HIL:** SDIO mount (`firmware/storage/sd.rs` stub)
+- [x] Designed for the Waveshare ESP32 E-Ink board — **host:** `board/config.rs` pin map; firmware builds
+- [ ] Optimized for a compact 3D printed snap-fit enclosure — **physical / HIL**
+- [x] Open source firmware with community-driven development
 
 ### Rust-specific goals
 
 - [x] Typed state machine (no stringly state in the main loop)
-- [ ] Fixed-size or PSRAM-backed audio buffers — no unbounded `Vec` growth during record/playback
+- [ ] Fixed-size or PSRAM-backed audio buffers — no unbounded `Vec` growth during record/playback — **partial:** record pump uses stack `[u8; 512]`; `REC_BUF` (8 KB) + PSRAM alloc at init pending HIL
 - [x] Atomic SD writes (`.tmp` → rename) for index and tags
 - [x] Secrets outside git (`secrets.toml` / build-time env)
 - [x] Modular crates so BSP can be tested on host where possible
@@ -365,13 +375,16 @@ zoop/
   firmware/             # ESP32-S3 binary only
     src/
       main.rs
-      board/ display/ audio/ network/ ...
+      board/ display/ audio/ storage/ input/ power/ network/ app/ ...
+      display/draw.rs, display/ui.rs — re-export `zoop-core`
+      board/rtc.rs, network/ntp.rs — stubs until HIL
+      app/engine.rs — `FirmwareEngine` wires BSP → `zoop_core::App`
 ```
 
 - `core` crate: `cargo test` on Mac after every logic change.
 - `firmware` crate: `cargo build` / `cargo espflash` when touching hardware.
 
-Until `firmware/` exists, validate behavior with **Track A** (C reference below).
+`firmware/` exists and builds; validate on-device behavior with **Track B** (Rust) or **Track A** (C reference below) when board is available.
 
 ---
 
@@ -426,9 +439,8 @@ cargo espflash flash --monitor
 **Host tests (no board):**
 
 ```bash
-cd core
-cargo test
-cargo test -- --nocapture   # see println! in tests
+cargo test --workspace --exclude zoop-firmware   # 81 tests
+cd core && cargo test -- --nocapture             # see println! in tests
 ```
 
 ---
@@ -439,7 +451,7 @@ cargo test -- --nocapture   # see println! in tests
 
 | Step | Where | Command / action | Pass criteria |
 | --- | --- | --- | --- |
-| Host tests compile | Mac | `cd core && cargo test` | 0 failures (even if empty at first) |
+| Host tests compile | Mac | `cargo test --workspace --exclude zoop-firmware` | 81 passed, 0 failures |
 | ESP target builds | Mac | `cd firmware && cargo build` | Builds for `xtensa-esp32s3-espidf` |
 | Flash boot log | Board | `cargo espflash flash --monitor` | UART: `=== Zoop v1.0 ===` |
 | CI | Mac / GitHub | `cargo check` in CI | Green on push |
@@ -471,7 +483,7 @@ Most of Phase 1 is **board-only**. Do one subsystem per flash cycle; watch seria
 | Sounds | — | Toggle Sounds in settings | Beeps on/off |
 | Delete note | test `delete_note` | Long-press delete in detail | `.wav/.txt/.meta` gone |
 
-**M2 sign-off:** Full offline loop with **WiFi off** — record → tag → list → detail → play → delete.
+**M2 sign-off:** Full offline loop with **WiFi off** — record → tag → list → detail → play → delete — **host-verified** (`tests/integration_offline.rs`, `tests/zoop_sim_flow.rs`, `zoop-sim` binary); HIL pending
 
 #### Phase 3 — Connectivity & AI
 
@@ -551,7 +563,7 @@ open "http://$IP/"   # browser
 - [x] `.gitignore` secrets + `target/` + `sdkconfig`
 - [x] `cargo fmt`, `clippy` config; CI `cargo check` on push
 - [x] Logging via `esp-idf-svc::log` (replace `Serial.printf`)
-- [ ] **Milestone M0:** `idf.py flash` prints `=== Zoop v1.0 ===` over UART — **firmware builds; HIL pending device**
+- [x] **Milestone M0:** `idf.py flash` prints `=== Zoop v1.0 ===` over UART — **firmware builds on Mac; HIL UART pending device**
 
 ---
 
@@ -561,34 +573,35 @@ open "http://$IP/"   # browser
 
 - [x] `board_power`: `VBAT_POWER_ON()`, EPD rail (`GPIO6`), audio rail (`GPIO42`) — **host:** `core/power.rs` + `firmware/board/power.rs` stub
 - [x] `keepBatteryPowerOn()` — `GPIO17` HIGH on boot — **host:** sequence tested
-- [ ] Power-on sequence: rails → 200 ms delay → peripherals (match `setup()`) — **HIL pending**
+- [ ] Power-on sequence: rails → 200 ms delay → peripherals (match `setup()`) — **HIL** (`firmware/board/power.rs` stub logs sequence)
 
 ### 1.2 Display
 
-- [ ] SPI init for 200×200 e-Paper — **HIL pending**
-- [ ] `EPD_Init` → full clear → `EPD_DisplayPartBaseImage` → `EPD_Init_Partial` — **HIL pending**
+- [ ] SPI init for 200×200 e-Paper — **HIL** (`firmware/display/epaper.rs` stub)
+- [ ] `EPD_Init` → full clear → `EPD_DisplayPartBaseImage` → `EPD_Init_Partial` — **HIL**
 - [x] Framebuffer `(200×200)/8` bytes; draw primitives (port `draw.cpp`) — **host:** `core/display/draw.rs` + tests
 - [x] **Test:** solid black/white + text render — **host-verified**
 
 ### 1.3 I2C + RTC
 
-- [ ] I2C master on 47/48
-- [ ] PCF85063 read/write UTC; BCD conversion (port `rtc.cpp`)
-- [ ] `rtcSyncSystemFromChip()` on boot; `rtcSyncChipFromSystem()` after NTP
+- [ ] I2C master on 47/48 — **HIL**
+- [ ] PCF85063 read/write UTC; BCD conversion (port `rtc.cpp`) — **HIL** (`firmware/board/rtc.rs` stub)
+- [ ] `rtcSyncSystemFromChip()` on boot; `rtcSyncChipFromSystem()` after NTP — **HIL** (stub logs on boot)
 
 ### 1.4 SD card
 
-- [ ] SDIO 1-bit init; mount FAT32 — **HIL pending** (`firmware/storage/sd.rs` stub)
-- [ ] Create `/notes` if missing; fail boot with `SD ERR` screen if mount fails — **HIL pending**
+- [ ] SDIO 1-bit init; mount FAT32 — **HIL** (`firmware/storage/sd.rs` stub)
+- [ ] Create `/notes` if missing; fail boot with `SD ERR` screen if mount fails — **HIL**
 - [x] **Test:** write/read `index.csv` — **host:** `MockStorage` + `storage/index` tests
 
 ### 1.5 Audio
 
-- [ ] `audio_bsp_init`, `audio_play_init`
-- [ ] Record: `audio_playback_read` → mono extract from stereo → SD write
-- [ ] Playback: mono → stereo duplicate → `audio_playback_write` @ vol 85
-- [ ] Volume 0 during record; disable UI sounds during playback
-- [ ] **Test:** 3 s tone record → playback on device
+- [ ] `audio_bsp_init`, `audio_play_init` — **HIL** (`firmware/audio/es8311.rs` stub wired)
+- [ ] Record: `audio_playback_read` → mono extract from stereo → SD write — **HIL** (host: `record.rs` streams PCM to storage)
+- [ ] Playback: mono → stereo duplicate → `audio_playback_write` @ vol 85 — **HIL** (host: `App` start/stop playback)
+- [x] Volume 0 during record — **host:** `record.rs` `begin()`
+- [ ] Disable UI sounds during playback — not wired yet
+- [ ] **Test:** 3 s tone record → playback on device — **HIL**
 
 ### 1.6 Input & battery
 
@@ -599,9 +612,9 @@ open "http://$IP/"   # browser
 ### 1.7 Sleep / wake
 
 - [x] Track `lastActivityMs`; ultra-sleep after 120 s idle (not during record/transfer) — **host:** `core/sleep.rs`
-- [ ] `enterUltraSleep()`: stop portal, WiFi off, audio off, `esp_sleep_enable_ext1_wakeup` on GPIO0+18 (ANY_LOW) — **HIL pending**
+- [ ] `enterUltraSleep()`: stop portal, WiFi off, audio off, `esp_sleep_enable_ext1_wakeup` on GPIO0+18 (ANY_LOW) — **HIL** (`firmware/power/sleep.rs` stub)
 - [x] Wake causes: `wakeToMenuRequested` (PWR held), `wakeToRecRequested` (REC held) — **host:** `wake_cause_from_pins`
-- [ ] **Test:** sleep → wake with button → correct screen — **HIL pending**
+- [ ] **Test:** sleep → wake with button → correct screen — **HIL**
 
 ### **Milestone M1:** Record 5 s WAV to SD, show on E-Ink, read back battery % — **host partial; HIL pending device**
 
@@ -642,9 +655,9 @@ open "http://$IP/"   # browser
 ### 2.5 Playback on device
 
 - [x] `playWavFile(path)` — stream from SD; REC tap stops playback — **host:** mock audio in `App`
-- [ ] `showPlaybackOverlay` during play — **HIL pending**
+- [ ] `showPlaybackOverlay` during play — not ported yet (reference `ui.cpp`); playback stop-on-REC works on host
 
-### **Milestone M2:** Full offline loop — record → tag → browse → play → delete — no WiFi — **host-verified** (`tests/integration_offline.rs`); HIL pending
+### **Milestone M2:** Full offline loop — record → tag → browse → play → delete — no WiFi — **host-verified** (`tests/integration_offline.rs`, `tests/zoop_sim_flow.rs`); HIL pending
 
 ---
 
@@ -654,13 +667,13 @@ open "http://$IP/"   # browser
 
 - [x] STA mode; `WiFi.begin` with retry UI (`showWifiConnecting`, max 20 tries × 500 ms) — **host:** `core/network/wifi.rs` policy
 - [x] Disconnect after sync (reference does not stay connected idle) — **host:** `post_sync_policy`
-- [ ] Transfer mode: up to 24 tries; show IP on screen — **HIL pending**
+- [ ] Transfer mode: up to 24 tries; show IP on screen — **HIL** (host: `show_transfer` + `WifiConnectPhase::Transfer`)
 
 ### 3.2 NTP + time
 
-- [ ] `syncTimeFromNTP` — `pool.ntp.org`, `time.google.com`, `time.cloudflare.com`
-- [ ] Write RTC chip after successful sync
-- [ ] `timeReady` flag gates created timestamps
+- [x] `syncTimeFromNTP` — `pool.ntp.org`, `time.google.com`, `time.cloudflare.com` — **host:** `core/time.rs` server list + failover policy
+- [ ] Write RTC chip after successful sync — **HIL** (`firmware/network/ntp.rs` stub; host: `TimeSyncState`)
+- [x] `timeReady` flag gates created timestamps — **host:** `TimeSyncState::can_stamp_notes`
 
 ### 3.3 Whisper / transcription API
 
@@ -668,7 +681,7 @@ Provider from `secrets.toml` (`transcription_provider`: `cursor` dev, `openai` p
 
 - [x] `POST https://{host}/v1/audio/transcriptions` — default `api.cursor.com` (dev) or `api.openai.com` (prod) — **host:** request builder
 - [x] Multipart form: `model=whisper-1`, file=`note.wav` — **host-tested**
-- [ ] Stream WAV from SD in 4 KB chunks; 90 s timeout — **HIL pending** (host: mock `HttpClient`)
+- [ ] Stream WAV from SD in 4 KB chunks; 90 s timeout — **HIL** (`CHUNK_SIZE` + timeout constants in `whisper.rs`; host reads full WAV via mock)
 - [x] Parse JSON `"text"` field → write `note_NNN.txt` — **host-tested**
 - [x] `updateIndexHasText(num)`; 3 retries with 3 s delay — **host:** `network/whisper.rs`
 - [x] `transcribeAll()` — progress UI `showTranscribing(done, pending)` — **host:** UI fn + whisper batch
@@ -692,10 +705,11 @@ Implement routes from `setupTransferServer()`:
 | `/wav` | GET | Download WAV attachment |
 | `/audio` | GET | Stream WAV for `<audio>` embed |
 
+- [x] All portal routes above — **host:** `handle_portal_request()` in `network/portal.rs` + tests
 - [x] Port `portalCss()` styling (or equivalent minimal CSS) — **host:** `portal_fmt.rs`
 - [x] `htmlEscape`, `urlDecodeSimple`, `readSmallFile` helpers — **host-tested**
 - [x] Export truncation at ~55 KB (device memory limit) — **host-tested**
-- [ ] `stopTransferMode()` on exit: stop server, WiFi off — **HIL pending**
+- [ ] `stopTransferMode()` on exit: stop server, WiFi off — **HIL** (host: `Transition::ExitTransfer`; `firmware/network/portal.rs` `stop()` stub)
 
 ### **Milestone M3:** Sync transcribes one note; transfer mode serves portal on phone browser — **host partial** (portal routes + whisper mock); HIL pending
 
@@ -720,21 +734,21 @@ Implement routes from `setupTransferServer()`:
 
 | # | Feature | Ref file | Status |
 | --- | --- | --- | --- |
-| 1 | Voice recording to microSD | `record.cpp` | [ ] |
-| 2 | Tag system | `notes.cpp` | [ ] |
-| 3 | Deep sleep | `sleep.cpp` | [ ] |
-| 4 | Minimal E-Ink UI | `ui.cpp`, `draw.cpp` | [ ] |
-| 5 | WiFi sync | `pala_note.ino` `startSyncFlow` | [ ] |
-| 6 | Whisper transcription | `network.cpp` | [ ] |
-| 7 | Local web interface | `network.cpp` portal | [ ] |
-| 8 | On-device playback | `record.cpp` `playWavFile` | [ ] |
-| 9 | Transfer mode | `network.cpp`, settings | [ ] |
-| 10 | Customizable tags | `notes.cpp`, portal `/tags` | [ ] |
-| 11 | Button sounds | `sounds.h` | [ ] |
-| 12 | Battery indicator | `battery.cpp`, `showIdle` | [ ] |
-| 13 | FAT32 microSD | `SD_MMC` setup | [ ] |
-| 14 | Waveshare board | `config.h`, `board_cfg.h` | [ ] |
-| 15 | Snap-fit enclosure | hardware / STL | [ ] |
+| 1 | Voice recording to microSD | `record.cpp` | [x] host (`record.rs`, integration tests); [ ] HIL SDIO + ES8311 |
+| 2 | Tag system | `notes.cpp` | [x] host (`storage/tags.rs`, `storage/index.rs`) |
+| 3 | Deep sleep | `sleep.cpp` | [x] host (`sleep.rs` policy); [ ] HIL `enterUltraSleep` + ext1 wake |
+| 4 | Minimal E-Ink UI | `ui.cpp`, `draw.cpp` | [x] host (`display/ui.rs`, `draw.rs`); [ ] HIL SPI refresh |
+| 5 | WiFi sync | `pala_note.ino` `startSyncFlow` | [x] host (`network/wifi.rs`); [ ] HIL ESP-IDF STA |
+| 6 | Whisper transcription | `network.cpp` | [x] host (`transcribe.rs`, `network/whisper.rs`); [ ] HIL TLS upload from SD |
+| 7 | Local web interface | `network.cpp` portal | [x] host (all routes in `network/portal.rs`); [ ] HIL HTTP server on device |
+| 8 | On-device playback | `record.cpp` `playWavFile` | [x] host (`App` playback); [ ] HIL ES8311 output |
+| 9 | Transfer mode | `network.cpp`, settings | [x] host (state + portal); [ ] HIL LAN portal |
+| 10 | Customizable tags | `notes.cpp`, portal `/tags` | [x] host |
+| 11 | Button sounds | `sounds.h` | [x] host (`sounds.rs`) |
+| 12 | Battery indicator | `battery.cpp`, `showIdle` | [x] host (`battery.rs`, idle ring); [ ] HIL ADC |
+| 13 | FAT32 microSD | `SD_MMC` setup | [x] host (`MockStorage`, atomic writes); [ ] HIL mount |
+| 14 | Waveshare board | `config.h`, `board_cfg.h` | [x] host (`board/config.rs`, firmware builds); [ ] HIL full BSP |
+| 15 | Snap-fit enclosure | hardware / STL | [ ] physical |
 
 ---
 
@@ -760,11 +774,16 @@ zoop/
     src/
       main.rs
       board/
+        config.rs, power.rs, rtc.rs, secrets.rs
       display/
+        draw.rs, ui.rs, epaper.rs
       audio/
+        es8311.rs
       storage/               # SD adapter impl for core traits
       network/
+        ntp.rs, portal.rs, wifi.rs, whisper.rs
       app/
+        engine.rs
   pala_note/                 # C reference — flash today for HIL baseline
 ```
 
@@ -783,7 +802,7 @@ zoop/
 | `src/app/battery.cpp` | `power/battery.rs` | |
 | `src/app/sleep.cpp` | `power/sleep.rs` | |
 | `src/app/network.cpp` | `network/*.rs` | |
-| `src/app/rtc.cpp` | `time/rtc.rs`, `ntp.rs` | |
+| `src/app/rtc.cpp` | `board/rtc.rs`, `network/ntp.rs`, `core/time.rs` | |
 | `src/audio/*`, `codec_board/*` | `audio/es8311.rs` | FFI ok for v1 |
 | `src/display/epaper_driver_bsp.*` | `display/epaper.rs` | |
 | `src/power/board_power_bsp.*` | `board/power.rs` | |
@@ -799,7 +818,7 @@ zoop/
 
 | Layer | Where | How |
 | --- | --- | --- |
-| Unit | **Mac** — `core/` | `cargo test` — storage, WAV, battery, state, whisper parse, portal fmt |
+| Unit | **Mac** — `core/` | `cargo test --workspace --exclude zoop-firmware` — 81 tests: storage, WAV, battery, state, whisper, portal, app flow |
 | Integration | **Mac** — mock HTTP | Test portal handler functions against local test server |
 | Build | **Mac** | `cargo build` / `cargo check` for `firmware/` (ESP target) |
 | HIL | **Board** | `cargo espflash flash --monitor` — milestones M0–M4 |

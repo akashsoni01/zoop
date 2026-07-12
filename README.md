@@ -3,7 +3,8 @@
 Small **Palma Notes**–style voice notepad on the Waveshare ESP32-S3 e-Paper board.
 
 - **Reference firmware (C/Arduino):** [`pala_note/`](./pala_note/) — v1.0, 2026-05-24  
-- **Rust IoT port (in progress):** see [`TODO.md`](./TODO.md)
+- **Rust IoT port (in progress):** see [`TODO.md`](./TODO.md)  
+- **Per-file API docs:** [`docs/`](./docs/README.md)
 
 ---
 
@@ -360,6 +361,7 @@ Implementation tracked in [`TODO.md`](./TODO.md) Phase 3+; transport choice shou
 
 ```
 zoop/
+  docs/              # Per-file API docs — start at docs/README.md
   core/              # Host-testable logic — `cargo test` on Mac
   firmware/          # ESP32-S3 binary — `cargo build` / `cargo espflash`
   README.md          ← you are here
