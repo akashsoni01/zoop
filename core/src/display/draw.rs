@@ -201,6 +201,7 @@ pub fn draw_str_centered(buf: &mut [u8], cx: i32, y: i32, s: &str, scale: i32, c
     draw_str(buf, cx - w / 2, y, s, scale, color);
 }
 
+/// Solid header bar (legacy / high-emphasis screens).
 pub fn draw_header(buf: &mut [u8], title: &str, right: Option<&str>) {
     fill_rect(buf, 0, 0, WIDTH as i32, 28, BLACK);
     draw_str_centered(buf, (WIDTH / 2) as i32, 10, title, 1, WHITE);
@@ -210,23 +211,69 @@ pub fn draw_header(buf: &mut [u8], title: &str, right: Option<&str>) {
     }
 }
 
+/// Paper-like title: black text + thin rule — less ink, calmer on e-Paper.
+pub fn draw_soft_header(buf: &mut [u8], title: &str, right: Option<&str>) {
+    draw_str(buf, 12, 10, title, 1, BLACK);
+    if let Some(r) = right {
+        let rw = text_width(r, 1);
+        draw_str(buf, WIDTH as i32 - 12 - rw, 10, r, 1, BLACK);
+    }
+    hline(buf, 12, 24, WIDTH as i32 - 24, BLACK);
+}
+
+/// Footer hints with breathing room (e-Ink friendly).
 pub fn draw_hints(buf: &mut [u8], rec_label: &str, pwr_label: &str) {
-    hline(buf, 0, 179, WIDTH as i32, BLACK);
-    fill_rect(buf, 0, 180, WIDTH as i32, 20, WHITE);
-    draw_str(buf, 8, 186, rec_label, 1, BLACK);
+    hline(buf, 12, 178, WIDTH as i32 - 24, BLACK);
+    draw_str(buf, 12, 186, rec_label, 1, BLACK);
     let rw = text_width(pwr_label, 1);
-    draw_str(buf, WIDTH as i32 - 8 - rw, 186, pwr_label, 1, BLACK);
+    draw_str(buf, WIDTH as i32 - 12 - rw, 186, pwr_label, 1, BLACK);
+}
+
+/// Outline selection row — avoids large inverted black blocks (ghosting / harshness).
+pub fn draw_select_row(buf: &mut [u8], y: i32, label: &str, selected: bool) {
+    let x = 12;
+    let w = WIDTH as i32 - 24;
+    let h = 24;
+    if selected {
+        // Outer frame
+        hline(buf, x, y, w, BLACK);
+        hline(buf, x, y + h - 1, w, BLACK);
+        vline(buf, x, y, h, BLACK);
+        vline(buf, x + w - 1, y, h, BLACK);
+        // Soft left accent
+        fill_rect(buf, x, y, 3, h, BLACK);
+        draw_str(buf, x + 12, y + 8, label, 1, BLACK);
+    } else {
+        draw_str(buf, x + 12, y + 8, label, 1, BLACK);
+    }
 }
 
 pub fn draw_battery_ring(buf: &mut [u8], cx: i32, cy: i32, percent: u8) {
-    stroke_circle(buf, cx, cy, 18, 2, BLACK);
+    stroke_circle(buf, cx, cy, 14, 1, BLACK);
     let filled = (percent as i32 * 360 / 100).min(360);
-    for angle in 0..filled {
+    for angle in (0..filled).step_by(3) {
         let rad = (angle - 90) as f32 * std::f32::consts::PI / 180.0;
-        let x = cx + (16.0 * rad.cos()).round() as i32;
-        let y = cy + (16.0 * rad.sin()).round() as i32;
+        let x = cx + (12.0 * rad.cos()).round() as i32;
+        let y = cy + (12.0 * rad.sin()).round() as i32;
         set_pixel(buf, x, y, BLACK);
     }
+}
+
+/// Open ring + small core — quieter than a solid disc.
+pub fn draw_calm_disc(buf: &mut [u8], cx: i32, cy: i32, outer_r: i32) {
+    stroke_circle(buf, cx, cy, outer_r, 2, BLACK);
+    stroke_circle(buf, cx, cy, outer_r - 8, 1, BLACK);
+    fill_circle(buf, cx, cy, 5, BLACK);
+}
+
+/// Simple check mark (saved / success).
+pub fn draw_check(buf: &mut [u8], cx: i32, cy: i32) {
+    stroke_circle(buf, cx, cy, 28, 2, BLACK);
+    // check
+    line(buf, cx - 12, cy, cx - 4, cy + 10, BLACK);
+    line(buf, cx - 4, cy + 10, cx + 14, cy - 12, BLACK);
+    line(buf, cx - 12, cy + 1, cx - 4, cy + 11, BLACK);
+    line(buf, cx - 4, cy + 11, cx + 14, cy - 11, BLACK);
 }
 
 #[cfg(test)]

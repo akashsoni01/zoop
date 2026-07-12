@@ -124,12 +124,17 @@ Hints on each screen document the current mapping. Full transition table: [state
 
 ---
 
-## Visual design rules (locked)
+## Visual design rules (e-Ink / relaxing)
 
 1. **No UI framework** — only `draw` + `ui` (see TODO locked stack).
-2. **Immediate-mode** — full clear + redraw on state change (partial refresh is HIL on panel).
-3. **E-Ink friendly** — high contrast, large hit targets, minimal animation.
-4. **Preview before flash** — always run `zoop-ui-preview` after UI changes.
+2. **Paper metaphor** — white background, sparse black ink (less ghosting and eyestrain).
+3. **Soft headers** — title + thin rule (`draw_soft_header`); solid black bars only for errors.
+4. **Outline selection** — framed rows with a left accent (`draw_select_row`), not inverted slabs.
+5. **Calm icons** — open rings / checks (`draw_calm_disc`, `draw_check`) instead of huge filled discs.
+6. **Quiet microcopy** — “ready”, “listening…”, “resting”, “writing words”.
+7. **Breathing room** — margins ≥12 px; note detail uses 6 airy lines (not 7 cramped).
+8. **Immediate-mode** — full clear + redraw on state change (partial refresh is HIL on panel).
+9. **Preview before flash** — always run `zoop-ui-preview` after UI changes.
 
 ---
 
