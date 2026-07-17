@@ -162,11 +162,12 @@ Accepted output example (serial JSON line):
 | Fail | Timeout / no QR + retry |
 | Export | “Sent” if UART/BLE export enabled |
 
-- [ ] Immediate-mode OLED draw
-- [ ] Truncate long payloads with ellipsis; optional scroll
+- [x] Immediate-mode OLED draw
+- [x] Truncate long payloads with ellipsis; optional scroll
 - [ ] HIL: Idle + Decoded on real OLED
 
-**Exit:** All states render in tests; HIL Idle + Decoded.
+**Exit:** All states render in tests; HIL Idle + Decoded.  
+**Host done:** `display::oled` + `state_qr` unit tests + `firmware-qr` Idle/Decoded frame counts.
 
 ---
 
@@ -279,7 +280,7 @@ cd firmware-qr && cargo build && cargo espflash flash
 
 - [ ] Phase 0 — BOM + pins (crate + docs linked; pin freeze open)
 - [x] Phase 1 — Host decode fixtures → string
-- [ ] Phase 2 — OLED UI
+- [x] Phase 2 — OLED UI (host partial; HIL open)
 - [ ] Phase 3 — Camera HIL decode
 - [ ] Phase 4 — DAC (+ optional mic)
 - [ ] Phase 5 — Export, sleep, docs

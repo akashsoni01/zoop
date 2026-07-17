@@ -23,6 +23,11 @@ pub enum CoreError {
         from: crate::state::AppState,
         event: crate::state::Transition,
     },
+    #[error("invalid QR state transition: {from:?} + {event:?}")]
+    InvalidQrTransition {
+        from: crate::state_qr::QrAppState,
+        event: crate::state_qr::QrTransition,
+    },
     #[error("invalid meta: {0}")]
     InvalidMeta(String),
     #[error("{0}")]

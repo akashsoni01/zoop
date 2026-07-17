@@ -1,8 +1,5 @@
 pub mod draw;
-pub mod oled;
-pub mod qr;
 pub mod ui;
 
 pub use draw::*;
-pub use qr::*;
 pub use ui::*;

@@ -15,6 +15,7 @@ pub mod record;
 pub mod sleep;
 pub mod sounds;
 pub mod state;
+pub mod state_qr;
 pub mod storage;
 pub mod time;
 pub mod transcribe;
@@ -41,6 +42,7 @@ pub use record::{RecordOutcome, RecordSession};
 pub use sleep::{ActivityTimer, WakeCause};
 pub use sounds::SoundsPolicy;
 pub use state::{AppState, ButtonEvent, StateMachine, Transition};
+pub use state_qr::{QrAppState, QrStateMachine, QrTransition};
 pub use storage::{
     add_custom_tag, add_to_index, delete_note, delete_tag, load_index, load_tags, next_note_number,
     read_note_meta_value, save_index, save_tag, save_tags, update_index_has_text, write_note_meta,
