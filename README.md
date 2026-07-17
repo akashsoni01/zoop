@@ -4,6 +4,7 @@
 
 - **Reference firmware (C/Arduino):** [`pala_note/`](./pala_note/) — historical voice-note reference  
 - **Rust IoT port (in progress):** see [`TODO.md`](./TODO.md)  
+- **QR scan → string (camera kit):** [`TODO_qr.md`](./TODO_qr.md) · [`docs/qr/`](./docs/qr/README.md)  
 - **Per-file API docs:** [`docs/`](./docs/README.md)  
 - **Architecture (UPI collect):** [`docs/architecture.md`](./docs/architecture.md)  
 - **UI capabilities + UPI QR preview:** [`docs/core/ui-capabilities.md`](./docs/core/ui-capabilities.md)

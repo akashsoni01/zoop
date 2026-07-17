@@ -10,6 +10,7 @@ pub mod paths;
 pub mod payment;
 pub mod portal_fmt;
 pub mod power;
+pub mod qr;
 pub mod record;
 pub mod sleep;
 pub mod sounds;

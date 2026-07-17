@@ -8,6 +8,7 @@ Rust firmware for **UPI collect** on the Waveshare ESP32-S3 e-Paper 1.54 board. 
 | Target board | Waveshare **ESP32-S3-ePaper-1.54** |
 | Hardware guide | [`README.md`](./README.md) |
 | Architecture | [`docs/architecture.md`](./docs/architecture.md) |
+| Related | QR scan → string: [`TODO_qr.md`](./TODO_qr.md) · Camera pay: [`TODO_camera.md`](./TODO_camera.md) |
 | Firmware version | `v1.0` |
 
 ### Implementation status

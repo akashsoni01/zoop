@@ -132,21 +132,21 @@ Accepted output example (serial JSON line):
 
 - [ ] Choose ESP32-S3 camera board (PSRAM, sensor)
 - [ ] Choose OLED / mic / DAC; freeze pin map
-- [ ] Decide crate: dedicated `firmware-qr/` vs share `firmware-camera/`
-- [ ] Link this file from [`README.md`](./README.md) / [`TODO.md`](./TODO.md)
-- [ ] Document shared pins with [`TODO_camera.md`](./TODO_camera.md)
+- [x] Decide crate: dedicated `firmware-qr/` vs share `firmware-camera/` — **`firmware-qr/`**
+- [x] Link this file from [`README.md`](./README.md) / [`TODO.md`](./TODO.md)
+- [ ] Document shared pins with [`TODO_camera.md`](./TODO_camera.md) — draft in [`docs/qr/hardware.md`](./docs/qr/hardware.md)
 
-**Exit:** BOM + pin map + flash/build path documented.
+**Exit:** BOM + pin map + flash/build path documented. (Draft docs + host crate path exist; HIL pin freeze still open.)
 
 ---
 
 ### Phase 1 — Host: decode string from fixtures
 
-- [ ] `qr::decode_grayscale(width, height, pixels) -> Result<String, DecodeError>`
-- [ ] Errors: `NotFound`, `TooBlurry`, `InvalidUtf8`, `TooLarge`
-- [ ] Fixture corpus: plain text, URL, long string, UPI URI (assert **raw string** only)
-- [ ] Debounce helper: `N` identical results → `Accepted`
-- [ ] Unit tests green without camera
+- [x] `qr::decode_grayscale(width, height, pixels) -> Result<DecodeResult, DecodeError>`
+- [x] Errors: `NotFound`, `TooBlurry`, `InvalidUtf8`, `TooLarge` (+ `InvalidFrame`)
+- [x] Fixture corpus: plain text, URL, long string, UPI URI (assert **raw string** only)
+- [x] Debounce helper: `N` identical results → `Accepted`
+- [x] Unit tests green without camera
 
 **Exit:** `cargo test -p zoop-core qr::` green.
 
@@ -268,21 +268,21 @@ cd firmware-qr && cargo build && cargo espflash flash
 
 1. Camera board SKU + PSRAM size  
 2. OLED I²C vs SPI  
-3. Decoder: `rqrr` vs `quirc` vs both (fallback)  
-4. Crate name: `firmware-qr` vs share `firmware-camera`  
-5. Invalid UTF-8: reject vs lossy replace  
+3. Decoder: `rqrr` (chosen for Phase 1 host) vs `quirc` fallback later  
+4. Crate name: **`firmware-qr`** (locked)  
+5. Invalid UTF-8: reject (`InvalidUtf8`) vs lossy replace  
 6. Mic in v1 or Phase 4 stretch  
 
 ---
 
 ## Milestone checklist
 
-- [ ] Phase 0 — BOM + pins  
-- [ ] Phase 1 — Host decode fixtures → string  
-- [ ] Phase 2 — OLED UI  
-- [ ] Phase 3 — Camera HIL decode  
-- [ ] Phase 4 — DAC (+ optional mic)  
-- [ ] Phase 5 — Export, sleep, docs  
+- [ ] Phase 0 — BOM + pins (crate + docs linked; pin freeze open)
+- [x] Phase 1 — Host decode fixtures → string
+- [ ] Phase 2 — OLED UI
+- [ ] Phase 3 — Camera HIL decode
+- [ ] Phase 4 — DAC (+ optional mic)
+- [ ] Phase 5 — Export, sleep, docs
 
 **First vertical slice:** Phase 0 → 1 (fixtures) → 3 (serial string) → 2 (OLED confirm) → 4 beeps → 5 export.
 
