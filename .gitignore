@@ -17,3 +17,4 @@ firmware/secrets.toml
 .DS_Store
 *.swp
 *~
+/pala_note
