@@ -156,16 +156,91 @@ A breadboard lets you plug wires without soldering.
 4. **One pin, one job** — Don’t put two signals on the same GPIO unless the docs say they are shared.
 5. **Color code (suggestion)** — Red = 3V3, Black = GND, Yellow/Orange = clocks, Green/Blue = data, White = misc.
 
-**Suggested layout on one 400-point board:**
+### Breadboard with everything installed (top view)
+
+Seat the ESP32 across the center trench (classic DevKit style). Put peripherals on the **right** half so Dupont runs stay short. CAM boards vary — if yours only has pin holes, solder male headers first.
 
 ```text
-  [ left half ]              [ right half ]
-  ESP32-S3-CAM               INMP441
-  straddling the             MAX98357A + speaker wires
-  center channel             OLED above or beside
+                    USB-C ──► laptop
+                         │
+                    ┌────┴────┐
+                    │  lens   │  ◄── OV camera on FPC (not on breadboard holes)
+                    └────┬────┘
+                         │ ribbon
+  +3V3 rail ════════════════════════════════════════════════ +3V3
+  GND  rail ════════════════════════════════════════════════ GND
+       ┌──────────────────────────────────────────────────────────┐
+       │  +  -     a b c d e ║ f g h i j     -  +                 │
+       │                                                          │
+       │           ┌─────────────────┐                            │
+       │           │  ESP32-S3-CAM   │  BOOT  RST                 │
+       │           │  (straddles ║)  │────┬───┬──                 │
+       │           │   USB-C ▲       │    │   │                   │
+       │           └─────────┬───────┘    │   │                   │
+       │                     │            │   └─ optional REC btn │
+       │         GPIOs out ──┤            └───── to GND           │
+       │                     │                                    │
+       │                     │   ┌──────────────┐                 │
+       │                     ├──►│ OLED 128×64  │  SDA←8 SCL←9    │
+       │                     │   │ VCC GND SCL  │                 │
+       │                     │   │     SDA      │                 │
+       │                     │   └──────────────┘                 │
+       │                     │                                    │
+       │                     │   ┌──────────────┐                 │
+       │                     ├──►│   INMP441    │  WS←1 SCK←2     │
+       │                     │   │ mic breakout │  SD←42          │
+       │                     │   │ L/R → GND    │                 │
+       │                     │   └──────────────┘                 │
+       │                     │                                    │
+       │                     │   ┌──────────────┐     ┌─────────┐ │
+       │                     └──►│  MAX98357A   │────►│ SPEAKER │ │
+       │                         │ DIN BCLK LRC │     │  +   -  │ │
+       │                         │ Vin GND      │     └─────────┘ │
+       │                         └──────────────┘                 │
+       │                                                          │
+       │   (opt) PWR btn ●── GPIO21 ── GND                        │
+       └──────────────────────────────────────────────────────────┘
+
+  Legend:  ║ = center trench (left a–e  ≠  right f–j)
+           ══ = power rails (tap 3V3 / GND for every module)
+           →  = Dupont jumpers (see pin table in §5)
 ```
 
-Seat the ESP32 so its pins sit in two columns across the center trench (classic DevKit style). CAM boards vary — if yours is a module with headers, plug those into the breadboard; if only pin holes, solder headers first or use Dupont to female headers carefully.
+Same layout as a block diagram:
+
+```mermaid
+flowchart TB
+  subgraph BB["400-point breadboard"]
+    direction TB
+    subgraph LEFT["Left / center"]
+      ESP["ESP32-S3-CAM<br/>USB-C · BOOT · RST<br/>straddles trench"]
+      CAM["OV camera<br/>FPC ribbon ↑"]
+      CAM --- ESP
+    end
+    subgraph RIGHT["Right half"]
+      OLED["OLED 128×64<br/>I²C 8/9"]
+      MIC["INMP441<br/>I²S 1/2/42"]
+      AMP["MAX98357A<br/>I²S 39/40/41"]
+      SPK["Speaker"]
+      BTN["Optional buttons<br/>REC=0 · PWR=21"]
+      AMP --> SPK
+    end
+    ESP -->|Dupont| OLED
+    ESP -->|Dupont| MIC
+    ESP -->|Dupont| AMP
+    ESP -->|Dupont| BTN
+  end
+  LAPTOP["Laptop"] -->|USB-C data| ESP
+```
+
+| Zone | Parts | Tip |
+| --- | --- | --- |
+| Top of MCU | Camera ribbon | Keep cable flat; don’t route Dupont over the latch |
+| Center | ESP32-S3-CAM | One row of pins on each side of `║` |
+| Upper right | OLED | Facing you so you can read “ZOOP QR” |
+| Mid right | INMP441 | Mic hole facing outward (away from speaker) |
+| Lower right | MAX98357A + speaker | Short speaker leads; amp Vin from **3V3** rail |
+| Rails | All VCC/GND | Red → `+`, black → `−`, then jump to each module |
 
 ---
 
