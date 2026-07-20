@@ -1,13 +1,15 @@
 # Zoop setup scripts (fresh laptop)
 
-Install everything needed to develop Zoop on a new machine — **host Rust tests** first, then the **ESP32-S3 firmware toolchain** for flashing the DIY AI Voice & Vision kit.
+Install everything needed to develop Zoop on a new machine — **host Rust tests** first, then the **ESP32-S3 firmware toolchain** for flashing the **OceanLabz DIY AI Voice Kit** (ESP32-S3 Camera + OLED + INMP441 + MAX98357 + speaker).
 
 | Kit part | Role in Zoop |
 | --- | --- |
 | ESP32-S3 Camera Board | MCU + OV camera (QR scan / vision) |
 | OLED (SSD1306 128×64) | Aiming / decoded string UI |
 | INMP441 | I²S mic (cues / future voice) |
-| MAX98357A + speaker | I²S DAC beeps / playback |
+| MAX98357 + speaker | I²S amp / “DAC” beeps |
+
+**Hardware source of truth:** [`physical-components/hardware_spec.md`](../physical-components/hardware_spec.md) (OceanLabz DIY AI Voice Kit)
 
 Tracks: [`TODO_qr.md`](../TODO_qr.md) · [`docs/qr/hardware.md`](../docs/qr/hardware.md) · e-Paper collect: [`TODO.md`](../TODO.md)
 
@@ -125,16 +127,15 @@ QR / camera track firmware will live under `firmware-qr/` (host demo today; ESP-
 
 ## Hardware wiring (why these GPIOs)
 
-Draft for **KS5028-class** ESP32-S3-CAM kits — **confirm silkscreen** on your board. Full table: [`docs/qr/hardware.md`](../docs/qr/hardware.md).
+**Do not edit pins here.** Canonical table: [`physical-components/hardware_spec.md`](../physical-components/hardware_spec.md) (OceanLabz DIY AI Voice Kit).
 
 | Peripheral | Pins (draft) | Why |
 | --- | --- | --- |
-| INMP441 | WS=1, SCK=2, SD=42 | I²S digital mic → voice / level cues |
-| MAX98357A | DIN=39, BCLK=40, LRC=41 | I²S Class-D amp → speaker beeps |
-| OLED | SDA=8, SCL=9 | I²C status UI (freeze after HIL) |
-| Camera | Onboard 24-pin FPC | No Dupont; used by `esp_camera` for QR frames |
-| REC button | GPIO 0 (BOOT) | Confirm / start scan (bootstrap-aware) |
-| PWR button | GPIO 21 (draft) | Cancel / retry — avoid GPIO 1 (mic WS on KS5028) |
+| INMP441 | WS=39, SCK=40, SD=41 | I²S mic (OceanLabz camera-board ref) |
+| MAX98357 | LRC=21, DIN=47, BCLK=48 | I²S amp → speaker |
+| OLED | SDA=8, SCL=9 | I²C UI (draft; avoid mic SD=41) |
+| Camera | Onboard FPC | `esp_camera` frames for QR |
+| REC / PWR | GPIO 0 / 14 | Confirm / cancel (draft) |
 
 Constants: [`firmware-qr/src/board/pins.rs`](../firmware-qr/src/board/pins.rs).
 

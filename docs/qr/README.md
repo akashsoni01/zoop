@@ -5,7 +5,8 @@ Host-testable QR decode, debounce, OLED UI frames, and scan state machine for th
 | | |
 | --- | --- |
 | Plan / checklist | [`TODO_qr.md`](../../TODO_qr.md) |
-| Hardware (draft) | [`hardware.md`](./hardware.md) |
+| Hardware (canonical) | [`../../physical-components/hardware_spec.md`](../../physical-components/hardware_spec.md) |
+| Hardware (short) | [`hardware.md`](./hardware.md) |
 | Core API | `zoop_core::qr` (`decode_grayscale`, `QrDebouncer`) |
 | OLED UI | `zoop_core::display::oled` (128×64 framebuffer + screens) |
 | State machine | `zoop_core::state_qr` (`QrAppState`, `QrStateMachine`) |

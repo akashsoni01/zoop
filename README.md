@@ -9,6 +9,7 @@
 - **Architecture (UPI collect):** [`docs/architecture.md`](./docs/architecture.md)  
 - **UI capabilities + UPI QR preview:** [`docs/core/ui-capabilities.md`](./docs/core/ui-capabilities.md)
 - **Fresh laptop setup (macOS / Linux / Windows / Termux):** [`scripts/README.md`](./scripts/README.md)
+- **OceanLabz DIY AI Voice Kit (hardware source of truth):** [`physical-components/hardware_spec.md`](./physical-components/hardware_spec.md)
 - **Physical kit / breadboard beginner guide:** [`physical-components/README.md`](./physical-components/README.md)
 
 ---

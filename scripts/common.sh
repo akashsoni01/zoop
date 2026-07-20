@@ -47,27 +47,26 @@ zoop_print_kit() {
 │  ESP32-S3 Camera Board · OLED · INMP441 · MAX98357A · Spk │
 └─────────────────────────────────────────────────────────────┘
 
-Draft wiring (KS5028-class ESP32-S3-CAM — verify silkscreen on your board):
+OceanLabz DIY AI Voice Kit — draft pins (see physical-components/hardware_spec.md):
 
   INMP441 mic (I²S RX)
-    WS  → GPIO 1
-    SCK → GPIO 2
-    SD  → GPIO 42
-    VDD → 3V3    GND → GND (+ L/R shorted to GND for left)
+    WS  → GPIO 39
+    SCK → GPIO 40
+    SD  → GPIO 41
+    VDD → 3V3    GND → GND (+ L/R → GND)
 
-  MAX98357A amp (I²S TX) → speaker
-    DIN  → GPIO 39
-    BCLK → GPIO 40
-    LRC  → GPIO 41
-    Vin  → 3V3 (SD often tied to Vin)    GND → GND
+  MAX98357 amp (I²S TX) → speaker
+    DIN  → GPIO 47
+    BCLK → GPIO 48
+    LRC  → GPIO 21
+    Vin  → 5V (or per kit card)    GND → GND
 
-  OLED SSD1306 128×64 (I²C) — draft in docs/qr/hardware.md
-    SDA → GPIO 8    SCL → GPIO 9   (freeze after HIL)
+  OLED (I²C)
+    SDA → GPIO 8    SCL → GPIO 9
 
-  Camera: onboard 24-pin FPC (OV series) — no Dupont needed
-  USB: Type-C data cable (not charge-only) · UART 115200
+  Camera: onboard FPC · USB-C data cable · UART 115200
 
-Docs: docs/qr/hardware.md · TODO_qr.md · TODO_camera.md
+Docs: physical-components/hardware_spec.md · TODO_qr.md
 
 EOF
 }

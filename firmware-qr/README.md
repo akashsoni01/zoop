@@ -2,6 +2,8 @@
 
 Host-only demo for **QR scan → string** (no ESP-IDF yet). Uses `zoop_core::qr::decode_grayscale` on a rendered fixture.
 
+Kit / pins: [`physical-components/hardware_spec.md`](../physical-components/hardware_spec.md) (OceanLabz DIY AI Voice Kit).
+
 See [`docs/qr/README.md`](../docs/qr/README.md) and [`TODO_qr.md`](../TODO_qr.md).
 
 ## Build / run
@@ -21,4 +23,4 @@ Expected stdout (JSON line):
 | Path | Role |
 | --- | --- |
 | `src/main.rs` | Encode fixture → decode → print JSON |
-| `src/board/pins.rs` | Draft GPIO constants (OLED / buttons / I²S) |
+| `src/board/pins.rs` | GPIOs from `hardware_spec.md` (OceanLabz) |

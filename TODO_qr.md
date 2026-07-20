@@ -1,6 +1,8 @@
 # Zoop QR — scan → string (camera kit)
 
-Foundation track: **ESP32-S3 camera board** captures frames, **decodes a QR payload to a string**, shows result on **OLED**, with **microphone** / **DAC** cues. Payment / UPI Circle flows build on this — see [`TODO_camera.md`](./TODO_camera.md).
+Foundation track: **OceanLabz DIY AI Voice Kit** (ESP32-S3 Camera Board + OLED + INMP441 + MAX98357 + speaker) captures frames, **decodes a QR payload to a string**, shows result on **OLED**, with **microphone** / **DAC** cues. Payment / UPI Circle flows build on this — see [`TODO_camera.md`](./TODO_camera.md).
+
+**Hardware source of truth:** [`physical-components/hardware_spec.md`](./physical-components/hardware_spec.md)
 
 | | |
 | --- | --- |
@@ -259,7 +261,8 @@ cd firmware-qr && cargo build && cargo espflash flash
 | Doc | Content |
 | --- | --- |
 | `docs/qr/README.md` | Overview: scan → string |
-| `docs/qr/hardware.md` | BOM + pin map |
+| [`physical-components/hardware_spec.md`](./physical-components/hardware_spec.md) | OceanLabz kit BOM + pin map (canonical) |
+| `docs/qr/hardware.md` | Short pointer to hardware_spec |
 | `docs/qr/decode.md` | Resolution, decoder choice, timing |
 | `docs/qr/export.md` | UART / BLE / SoftAP contract |
 
