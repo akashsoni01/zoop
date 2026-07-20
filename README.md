@@ -9,6 +9,7 @@
 - **Architecture (UPI collect):** [`docs/architecture.md`](./docs/architecture.md)  
 - **UI capabilities + UPI QR preview:** [`docs/core/ui-capabilities.md`](./docs/core/ui-capabilities.md)
 - **Fresh laptop setup (macOS / Linux / Windows / Termux):** [`scripts/README.md`](./scripts/README.md)
+- **Physical kit / breadboard beginner guide:** [`physical-components/README.md`](./physical-components/README.md)
 
 ---
 

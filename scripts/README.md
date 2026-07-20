@@ -11,6 +11,8 @@ Install everything needed to develop Zoop on a new machine — **host Rust tests
 
 Tracks: [`TODO_qr.md`](../TODO_qr.md) · [`docs/qr/hardware.md`](../docs/qr/hardware.md) · e-Paper collect: [`TODO.md`](../TODO.md)
 
+**Hardware assembly (beginners):** [`physical-components/README.md`](../physical-components/README.md)
+
 ---
 
 ## Quick start (recommended)

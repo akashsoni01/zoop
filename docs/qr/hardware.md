@@ -24,7 +24,9 @@ Dedicated **`firmware-qr/`** (`zoop-firmware-qr`) — separate from e-Paper coll
 **DIY AI Voice & Vision** — ESP32-S3 Camera Board + OLED + INMP441 + MAX98357A + speaker  
 (Keyestudio **KS5028**-class wiring used as the draft below; always check your board silkscreen.)
 
-Fresh laptop setup: [`scripts/README.md`](../../scripts/README.md)
+Fresh laptop setup: [`scripts/README.md`](../../scripts/README.md)  
+Beginner wiring guide: [`physical-components/README.md`](../../physical-components/README.md)  
+Visual wiring (public repos / photos): [`physical-components/README.md` § Public repos](../../physical-components/README.md#public-repos--see-the-connections) — especially [s60sc/ESP32-CAM_MJPEG2SD](https://github.com/s60sc/ESP32-CAM_MJPEG2SD) (`extras/I2C.jpg`, `camera_pins.h`)
 
 ## Pin table (draft — KS5028-class)
 
