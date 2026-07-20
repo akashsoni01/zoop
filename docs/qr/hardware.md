@@ -12,29 +12,38 @@ Dedicated **`firmware-qr/`** (`zoop-firmware-qr`) — separate from e-Paper coll
 
 | Part | Role | Candidate | Notes |
 | --- | --- | --- | --- |
-| ESP32-S3 camera board | MCU + sensor | Generic S3-CAM OV2640 + PSRAM | Or XIAO ESP32S3 Sense |
+| ESP32-S3 camera board | MCU + sensor | DIY AI Voice+Vision S3-CAM (OV + PSRAM) | KS5028-class / similar |
 | OLED | Aiming / result | SSD1306 128×64 I²C | SH1106 alt |
 | Microphone | Trigger / levels | INMP441 (I²S MEMS) | Often onboard on Sense |
 | DAC / amp | Beeps | MAX98357A → speaker | I²S TX |
 | Buttons | Accept / cancel | ≥2 GPIO | REC / PWR |
 | Battery | Portable | LiPo + ADC | TBD sense pin |
 
-## Pin table (draft)
+## Target kit
+
+**DIY AI Voice & Vision** — ESP32-S3 Camera Board + OLED + INMP441 + MAX98357A + speaker  
+(Keyestudio **KS5028**-class wiring used as the draft below; always check your board silkscreen.)
+
+Fresh laptop setup: [`scripts/README.md`](../../scripts/README.md)
+
+## Pin table (draft — KS5028-class)
 
 | Function | GPIO | Bus | Status |
 | --- | --- | --- | --- |
-| OLED SDA | 8 | I²C | Draft |
-| OLED SCL | 9 | I²C | Draft |
-| OLED RST | — | — | Often NC / TBD |
-| Button REC | 0 | GPIO | Draft (boot-strap aware) |
-| Button PWR | 1 | GPIO | Draft |
-| I²S BCLK (mic) | 41 | I²S RX | Placeholder |
-| I²S WS (mic) | 42 | I²S RX | Placeholder |
-| I²S DIN (mic) | 40 | I²S RX | Placeholder |
-| I²S BCLK (DAC) | TBD | I²S TX | Time-slice with mic |
-| I²S WS (DAC) | TBD | I²S TX | |
-| I²S DOUT (DAC) | TBD | I²S TX | |
-| Camera DVP / SCCB | board defaults | — | **TBD** per camera SKU |
+| OLED SDA | 8 | I²C | Draft (freeze HIL) |
+| OLED SCL | 9 | I²C | Draft (freeze HIL) |
+| OLED RST | — | — | Often NC |
+| Button REC | 0 | GPIO | BOOT / IO0 — bootstrap aware |
+| Button PWR | 21 | GPIO | Draft (GPIO 1 taken by mic WS on KS5028) |
+| INMP441 WS | 1 | I²S RX | KS5028 example |
+| INMP441 SCK | 2 | I²S RX | KS5028 example |
+| INMP441 SD | 42 | I²S RX | KS5028 example |
+| MAX98357 DIN | 39 | I²S TX | KS5028 example |
+| MAX98357 BCLK | 40 | I²S TX | KS5028 example |
+| MAX98357 LRC | 41 | I²S TX | KS5028 example |
+| Camera | onboard FPC | DVP | Board defaults (`esp_camera`) |
 | Battery ADC | TBD | ADC | |
 
-Camera pins depend on the chosen module (OV2640 vs Sense): document the final map when the board SKU is frozen.
+> **Conflict note:** KS5028 maps mic WS to GPIO 1. If you also want a PWR button on GPIO 1, remount the button or move mic WS after HIL.
+
+Constants: `firmware-qr/src/board/pins.rs`.

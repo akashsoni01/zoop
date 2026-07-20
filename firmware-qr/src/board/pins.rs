@@ -1,24 +1,33 @@
-//! Draft pin map for ESP32-S3 camera + OLED QR kit.
-//! Values mirror [`docs/qr/hardware.md`]; freeze after Phase 0 HIL.
+//! Draft pin map for DIY AI Voice+Vision kit (ESP32-S3-CAM class).
+//! Defaults follow Keyestudio KS5028-style wiring; verify silkscreen / schematic.
+//! See [`docs/qr/hardware.md`](../../docs/qr/hardware.md).
 
-#![allow(dead_code)] // draft constants until OLED / I²S / camera drivers land
+#![allow(dead_code)] // draft until OLED / I²S / camera drivers land
 
-/// OLED I²C SDA (draft).
+/// OLED I²C SDA (draft — freeze after HIL).
 pub const OLED_SDA: u8 = 8;
-/// OLED I²C SCL (draft).
+/// OLED I²C SCL (draft — freeze after HIL).
 pub const OLED_SCL: u8 = 9;
 
-/// Accept / confirm button (REC).
+/// Accept / confirm button (REC) — often BOOT/IO0 on CAM boards.
 pub const BTN_REC: u8 = 0;
-/// Cancel / power / retry button (PWR).
-pub const BTN_PWR: u8 = 1;
+/// Cancel / power / retry (draft — avoid GPIO 1; KS5028 uses it for mic WS).
+pub const BTN_PWR: u8 = 21;
 
-/// I²S bit clock for INMP441 (placeholder).
-pub const I2S_MIC_BCLK: u8 = 41;
-/// I²S word select for INMP441 (placeholder).
-pub const I2S_MIC_WS: u8 = 42;
-/// I²S data in from INMP441 (placeholder).
-pub const I2S_MIC_DIN: u8 = 40;
+// ─── INMP441 I²S RX (KS5028 example) ─────────────────────────────────────
+/// Word select / LRCLK.
+pub const I2S_MIC_WS: u8 = 1;
+/// Bit clock / SCK.
+pub const I2S_MIC_BCLK: u8 = 2;
+/// Data from mic (SD).
+pub const I2S_MIC_DIN: u8 = 42;
 
-// MAX98357A I²S TX pins: TBD (share / time-slice with mic).
-// Camera DVP / SCCB: TBD per board SKU (OV2640 / Sense defaults).
+// ─── MAX98357A I²S TX (KS5028 example) ───────────────────────────────────
+/// Data to amp (DIN).
+pub const I2S_DAC_DOUT: u8 = 39;
+/// Bit clock.
+pub const I2S_DAC_BCLK: u8 = 40;
+/// Word select / LRC.
+pub const I2S_DAC_WS: u8 = 41;
+
+// Camera: onboard 24-pin FPC (OV series) — board defaults via esp_camera.
