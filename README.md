@@ -483,6 +483,12 @@ If `cargo check` fails with `custom toolchain 'esp' ... is not installed`, run `
 
 See [`TODO.md`](./TODO.md) for phase milestones, pin map, and HIL test plans.
 
+### Desi Notes
+- https://randomnerdtutorials.com/esp32-s3-devkitc-pinout-guide/
+- https://github.com/s60sc/ESP32-CAM_MJPEG2SD/blob/master/extras/I2C.jpg
+- https://documentation.espressif.com/esp32-s3_datasheet_en.pdf
+- https://lastminuteengineers.com/esp32-s3-devkitc-pinout-reference/
+- https://github.com/78/xiaozhi-esp32
 ---
 
 ## License / credits
