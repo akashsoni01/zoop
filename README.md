@@ -489,6 +489,10 @@ See [`TODO.md`](./TODO.md) for phase milestones, pin map, and HIL test plans.
 - https://documentation.espressif.com/esp32-s3_datasheet_en.pdf
 - https://lastminuteengineers.com/esp32-s3-devkitc-pinout-reference/
 - https://github.com/78/xiaozhi-esp32
+- https://www.printables.com/model/61978-ayodhya-ram-temple-no-supports-required/files
+- https://app.sketchup.com/app
+- https://www.youtube.com/watch?v=_HsZzkSYao0
+
 ---
 
 ## License / credits
