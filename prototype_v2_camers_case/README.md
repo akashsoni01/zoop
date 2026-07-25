@@ -40,8 +40,13 @@ Parameters: [`scale_params.json`](./scale_params.json).
 | --- | --- |
 | `front_housing_v2.stl` / `.step` | Widened front |
 | `back_housing_v2.stl` / `.step` | Widened back |
-| `button.3mf` | Identical to v1 |
+| `button.3mf` | Original dual-button module from v1 (two plungers) |
+| `button_boot.stl` / `.3mf` | BOOT plunger (centered, print-ready) |
+| `button_power.stl` / `.3mf` | POWER / RESET plunger (centered, print-ready) |
+| `buttons_boot_power.3mf` | BOOT + POWER on one plate |
 | `scale_params.json` | Reproducible scale inputs |
+
+Button size ≈ **4.8 × 7.0 × 5.6 mm**. Same curved plunger as v1; use one over the board **BOOT** switch and one over **EN/RESET**.
 
 ## Print / fit notes
 
