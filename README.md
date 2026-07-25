@@ -493,6 +493,12 @@ See [`TODO.md`](./TODO.md) for phase milestones, pin map, and HIL test plans.
 - https://app.sketchup.com/app
 - https://www.youtube.com/watch?v=_HsZzkSYao0
 
+### Came Module
+- https://github.com/s60sc/ESP32-CAM_MJPEG2SD
+- https://www.printables.com/model/75024-esp32-cam-case/files
+- https://www.youtube.com/watch?v=GNP_wO85WBY
+
+
 ---
 
 ## License / credits

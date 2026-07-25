@@ -1,0 +1,15 @@
+{
+  "source": "prototype_v1_camera_case",
+  "target_board": "ESP32-S3-WROOM-1-N16R8 Camera (Freenove-class ~57x28mm)",
+  "makerworld_ref": "https://makerworld.com/en/models/2753270-case-esp32-s3-wroom-1-n16r8-camera#profileId-3055152",
+  "v1_outer_xyz_mm": [44.9, 58.4, 11.3],
+  "board_pcb_mm": [57.0, 28.0],
+  "clearance_each_side_mm": 1.0,
+  "wall_each_mm": 2.0,
+  "target_outer_width_mm": 63.0,
+  "scale_x": 1.4031180400890868,
+  "scale_y": 1.0,
+  "scale_z": 1.0,
+  "scale_about": "bbox center X of front_housing_v1",
+  "unchanged": ["button.3mf", "length_Y", "thickness_Z", "snap_feature_topology", "curve_topology"]
+}
