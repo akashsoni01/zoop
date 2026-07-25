@@ -5,7 +5,7 @@ Install everything needed to develop Zoop on a new machine — **host Rust tests
 | Kit part | Role in Zoop |
 | --- | --- |
 | ESP32-S3 Camera Board | MCU + OV camera (QR scan / vision) |
-| OLED (SSD1306 128×64) | Aiming / decoded string UI |
+| OLED **1.54″** (SSD1309 / 128×64) | Aiming / decoded string UI |
 | INMP441 | I²S mic (cues / future voice) |
 | MAX98357 + speaker | I²S amp / “DAC” beeps |
 

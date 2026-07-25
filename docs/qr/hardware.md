@@ -13,7 +13,7 @@ Do not invent GPIOs here. Update `hardware_spec.md` first, then sync `firmware-q
 
 ## Kit (locked)
 
-**OceanLabz DIY AI Voice Kit** — ESP32-S3 Camera Board + OLED + INMP441 + MAX98357 + speaker  
+**OceanLabz DIY AI Voice Kit** — ESP32-S3 Camera Board + **1.54″ OLED** + INMP441 + MAX98357 + speaker  
 ASIN [B0G26QNQLD](https://www.amazon.in/dp/B0G26QNQLD) · ~8 MB PSRAM · ~16 MB flash
 
 ## Crate layout

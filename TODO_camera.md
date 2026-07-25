@@ -8,7 +8,7 @@ Companion product / hardware track for **Zoop Pay**: an **ESP32-S3 camera board*
 | Pay path (**locked v1**) | **UPI Circle / Delegate APIs** — not raw `upi://` handoff as primary |
 | Related | Collect device: [`TODO.md`](./TODO.md) · [`docs/architecture.md`](./docs/architecture.md) |
 | Target MCU | **ESP32-S3** (PSRAM strongly preferred for frames) |
-| Display | **OLED** (SSD1306 / SH1106 I²C, or SPI — lock in Phase 0) |
+| Display | **1.54″ OLED** 128×64 (SSD1309 / SSD1306 I²C, or SPI) |
 | Audio in | **Microphone** (I²S MEMS preferred — lock in Phase 0) |
 | Audio out | **DAC** / I²S DAC → speaker |
 | Status legend | `[x]` host-verified · `[ ]` todo · `[ ] HIL` needs board |
@@ -110,7 +110,7 @@ Reference shapes (bank/PSP docs; names vary by integrator):
 | Part | Role | Notes |
 | --- | --- | --- |
 | **ESP32-S3 camera board** | MCU + camera | OV2640/5640 + **PSRAM**; lock SKU in Phase 0 |
-| **OLED** | Status UI | 128×64 I²C SSD1306 / SH1106 preferred |
+| **OLED 1.54″** | Status UI | 128×64 I²C SSD1309 / SSD1306 preferred |
 | **Microphone** | Voice / future STT | I²S MEMS (INMP441-class) |
 | **DAC** | Beeps / prompts | MAX98357A or board codec; mono OK |
 | Buttons | Confirm / cancel / wake | ≥2 (REC / PWR semantics) |
@@ -144,7 +144,7 @@ Reference shapes (bank/PSP docs; names vary by integrator):
 | Firmware | `esp-idf-svc` / `esp-idf-hal` | Embassy-only |
 | Camera | ESP-IDF `esp_camera` | Raw DVP bitbang |
 | QR decode | On-device `rqrr` / `quirc` | Cloud-only decode |
-| OLED | Custom 128×64 or `ssd1306` + fonts | LVGL |
+| OLED 1.54″ | Custom 128×64 (`display::oled`) + SSD1309/SSD1306 | LVGL |
 | **Payments** | **Zoop Delegate HTTPS client** → PSP/UPI Circle | Device → NPCI switch direct |
 | UPI helpers | `zoop-core` parse + `delegate` module | Ad-hoc JSON in UI |
 | Audio | I²S beeps first | On-device TTS |

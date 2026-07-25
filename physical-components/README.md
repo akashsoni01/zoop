@@ -72,7 +72,7 @@ Unpack and tick (kit lists ~**13** pieces; marketing “box contents” highligh
 | --- | --- | --- |
 | 1 | **ESP32-S3 Camera Board** | Brain — Wi‑Fi, BLE, USB, camera FPC |
 | 2 | **Camera module** | Vision / QR frames |
-| 3 | **OLED** | Status UI |
+| 3 | **OLED 1.54″** | Status UI (128×64) |
 | 4 | **INMP441** | Voice in |
 | 5 | **MAX98357** | Audio out amp |
 | 6 | **Speaker** | Sound |
@@ -129,7 +129,7 @@ Exact GPIOs: [`hardware_spec.md` §4](./hardware_spec.md#41-zoop-draft-camera-bo
        │           └──────────┬───────────┘                       │
        │                      │                                   │
        │                      │   ┌─────────────┐                 │
-       │                      ├──►│ OLED 128×64 │  SDA=8 SCL=9    │
+       │                      ├──►│ OLED 1.54″ 128×64 │  SDA=8 SCL=9    │
        │                      │   └─────────────┘                 │
        │                      │   ┌─────────────┐                 │
        │                      ├──►│  INMP441    │  WS=39 SCK=40   │
@@ -166,7 +166,7 @@ flowchart TB
 | Part | Labels to find |
 | --- | --- |
 | ESP32-S3 Camera Board | USB-C, BOOT, RST, camera FPC, GPIO silk |
-| OLED | `VCC` `GND` `SCL` `SDA` — use **3V3** |
+| OLED 1.54″ | `VCC` `GND` `SCL` `SDA` — use **3V3**; module ~42×38 mm |
 | INMP441 | `VDD` `GND` `WS` `SCK` `SD` `L/R` — **L/R → GND** |
 | MAX98357 | `DIN` `BCLK` `LRC` `Vin` `GND` `GAIN` + speaker pads |
 | Speaker | Two wires → amp Audio+ / Audio− |

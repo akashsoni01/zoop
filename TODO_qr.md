@@ -9,7 +9,7 @@ Foundation track: **OceanLabz DIY AI Voice Kit** (ESP32-S3 Camera Board + OLED +
 | Goal | Live QR scan → stable UTF-8 string (any payload; UPI is a consumer) |
 | Related | Collect: [`TODO.md`](./TODO.md) · Scan/pay: [`TODO_camera.md`](./TODO_camera.md) · [`docs/architecture.md`](./docs/architecture.md) |
 | Target MCU | **ESP32-S3** (PSRAM required for frames) |
-| Display | **OLED** (SSD1306 / SH1106 I²C preferred — lock in Phase 0) |
+| Display | **1.54″ OLED** 128×64 (SSD1309 / SSD1306 I²C preferred) |
 | Audio in | **Microphone** (I²S MEMS preferred — lock in Phase 0) |
 | Audio out | **DAC** / I²S amp → speaker |
 | Status legend | `[x]` host-verified · `[ ]` todo · `[ ] HIL` needs board |
@@ -47,7 +47,7 @@ Same kit as the camera scan product — lock SKU + pins in Phase 0.
 | Part | Role | Notes |
 | --- | --- | --- |
 | **ESP32-S3 camera board** | MCU + sensor | OV2640 / OV5640 + **PSRAM** |
-| **OLED** | Aiming / result UI | 128×64 I²C SSD1306 / SH1106 |
+| **OLED 1.54″** | Aiming / result UI | 128×64 I²C SSD1309 / SSD1306 |
 | **Microphone** | Scan trigger / levels | I²S MEMS (INMP441-class) |
 | **DAC** | Beeps | MAX98357A or board codec |
 | Buttons | Accept / cancel / wake | ≥2 (REC / PWR) |
@@ -79,7 +79,7 @@ Same kit as the camera scan product — lock SKU + pins in Phase 0.
 | Firmware | `esp-idf-svc` / `esp-idf-hal` | Embassy-only |
 | Camera | ESP-IDF `esp_camera` | Raw DVP bitbang |
 | QR decode | On-device `rqrr` and/or `quirc` | Cloud-only decode |
-| OLED | Custom 128×64 or `ssd1306` + fonts | LVGL |
+| OLED 1.54″ | Custom 128×64 (`display::oled`) + SSD1309/SSD1306 | LVGL |
 | Audio | I²S beeps first | On-device TTS |
 | UI | Immediate-mode | Slint / egui on device |
 | Layout | `core/` decode helpers + `firmware-qr/` (or shared `firmware-camera/`) | Mixing e-Paper BSP |

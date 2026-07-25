@@ -1,4 +1,5 @@
-//! 128×64 1-bit OLED framebuffer — MSB-first packing like e-Paper.
+//! 128×64 1-bit framebuffer for **1.54″ OLED** (SSD1309/SSD1306-class).
+//! MSB-first packing like e-Paper.
 
 pub const WIDTH: u16 = 128;
 pub const HEIGHT: u16 = 64;

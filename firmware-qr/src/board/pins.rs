@@ -5,10 +5,10 @@
 
 #![allow(dead_code)] // draft until OLED / I²S / camera drivers land
 
-// ─── OLED I²C (draft — avoid mic SD on GPIO 41) ──────────────────────────
-/// OLED I²C SDA.
+// ─── 1.54″ OLED I²C (draft — avoid mic SD on GPIO 41) ─────────────────────
+/// OLED I²C SDA (1.54″ 128×64 module).
 pub const OLED_SDA: u8 = 8;
-/// OLED I²C SCL.
+/// OLED I²C SCL (1.54″ 128×64 module).
 pub const OLED_SCL: u8 = 9;
 
 /// Accept / confirm (often BOOT / IO0).

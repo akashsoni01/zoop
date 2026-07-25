@@ -29,7 +29,7 @@ Smart **voice + vision** development kit for AI / IoT projects:
 | --- | --- | --- |
 | 1 | **ESP32-S3 Camera Board** | MCU, Wi‑Fi / BLE, camera interface, USB program/serial |
 | 2 | **Camera module** (OV-series on FPC) | Live frames → QR decode |
-| 3 | **OLED** (typically 0.96″ I²C 128×64) | Aiming / decoded string UI |
+| 3 | **OLED 1.54″** (I²C/SPI, 128×64, SSD1309-class) | Aiming / decoded string UI |
 | 4 | **INMP441** | I²S MEMS microphone |
 | 5 | **MAX98357** (MAX98357A) | I²S Class‑D amp (“DAC” in marketing) |
 | 6 | **Speaker** | Beeps / prompts |
@@ -81,8 +81,25 @@ Recorded from the marketplace page. **Some marketplace fields are wrong for ESP3
 | Camera | Onboard FPC → OV2640-class (confirm silk / module) |
 | Mic bus | I²S → INMP441 |
 | Amp bus | I²S → MAX98357A → speaker |
-| Display bus | I²C → OLED (SSD1306-class unless kit card says otherwise) |
+| Display | **1.54″ OLED**, 128×64, driver **SSD1309** (or SSD1306-compatible) |
+| Display bus | I²C (preferred) or SPI → OLED |
+| Display module (typical PCB) | ~**42.4 × 38 mm**; active area ~**35.05 × 17.51 mm** |
 | Logic level | **3.3 V** GPIO; amp Vin often **5 V** on OceanLabz sibling guides |
+
+
+### Display — 1.54″ OLED (locked)
+
+| Item | Value |
+| --- | --- |
+| Diagonal | **1.54 inch** |
+| Resolution | **128 × 64** pixels (same framebuffer as Zoop `display::oled`) |
+| Driver IC | **SSD1309** preferred (SSD1306/SH1106 OK if timing matches) |
+| Interface | I²C (Zoop draft pins) or 4-wire SPI |
+| Active area (typical) | ~35.05 × 17.51 mm |
+| Module PCB (typical) | ~42.4 × 38.0 mm (e.g. Winstar WEA012864A / LCDWiki MSP154) |
+| Logic | **3.3 V** |
+
+Zoop host UI: `core/src/display/oled` — `WIDTH=128`, `HEIGHT=64`. Physical window in any case must clear the **1.54″** active area (~35×18 mm), not a 0.96″ cutout.
 
 ---
 
@@ -148,3 +165,4 @@ Visual community photos (technique only): [s60sc/ESP32-CAM_MJPEG2SD](https://git
 | Date | Change |
 | --- | --- |
 | 2026-07-20 | Initial OceanLabz DIY AI Voice Kit lock-in from listing ASIN B0G26QNQLD + OceanLabz sibling pin refs |
+| 2026-07-25 | Display locked to **1.54″ OLED** 128×64 (SSD1309-class); was draft 0.96″ |
