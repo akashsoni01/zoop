@@ -498,7 +498,9 @@ See [`TODO.md`](./TODO.md) for phase milestones, pin map, and HIL test plans.
 - https://www.printables.com/model/75024-esp32-cam-case/files
 - https://www.youtube.com/watch?v=GNP_wO85WBY
 
-
+### mini setup and pins
+- https://www.youtube.com/watch?v=wLX1W3z8CSA
+- https://www.youtube.com/watch?v=aDaSp6zaqWM - face ui
 ---
 
 ## License / credits
