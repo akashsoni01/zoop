@@ -4,6 +4,8 @@ Per-file reference for the Zoop workspace. Each page documents path, purpose, ar
 
 **Start with the system map:** [architecture.md](architecture.md) — host vs device crates, UPI collect flow, and the payment state machine.
 
+**Learn Embedded Rust:** [learning/README.md](learning/README.md) — beginner→advanced curriculum (peripherals, sensors, protocols, boards, projects).
+
 **See / review the E-Ink UI:** [core/ui-capabilities.md](core/ui-capabilities.md) — **UPI payment screens**, QR on e-Ink, and `zoop-ui-preview`.
 
 ```bash
@@ -38,10 +40,11 @@ Full diagrams: [architecture.md](architecture.md).
 ## How to navigate
 
 1. Start here for the table of contents.
-2. Open a crate overview: [core/](core/README.md) or [firmware/](firmware/README.md).
-3. **UI:** [core/ui-capabilities.md](core/ui-capabilities.md) → [core/display/](core/display/README.md).
-4. Open a module README (e.g. [core/display/](core/display/README.md)), then a file page (e.g. [core/display/ui.md](core/display/ui.md)).
-5. Build/CI config lives under [config/](config/README.md).
+2. **New to Embedded Rust?** Start at [learning/](learning/README.md).
+3. Open a crate overview: [core/](core/README.md) or [firmware/](firmware/README.md).
+4. **UI:** [core/ui-capabilities.md](core/ui-capabilities.md) → [core/display/](core/display/README.md).
+5. Open a module README (e.g. [core/display/](core/display/README.md)), then a file page (e.g. [core/display/ui.md](core/display/ui.md)).
+6. Build/CI config lives under [config/](config/README.md).
 
 **Statuses:** *Host-verified* = covered by `cargo test` on CI. *HIL stub* = firmware compiles; hardware path pending. *Build-time* = compile/config only.
 
