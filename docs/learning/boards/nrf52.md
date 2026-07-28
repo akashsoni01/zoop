@@ -8,14 +8,20 @@ Example board: **nRF52840 DK**.
 
 ## Overview
 
-| Spec | nRF52840 DK |
-|------|-------------|
+| Spec | nRF52840 DK (PCA10056) |
+|------|------------------------|
+| **PCB size** | **102 × 64 mm** (L × W) |
 | **CPU** | Cortex-M4F @ 64 MHz |
 | **Flash** | 1 MB |
 | **SRAM** | 256 KB |
 | **Bluetooth** | BLE 5, Mesh capable |
 | **USB** | Full-speed device |
 | **802.15.4** | Optional multiprotocol with SoftDevice |
+| **Headers** | Arduino-compatible + debug |
+
+### Board dimensions
+
+Larger than Pico/ESP DevKits — includes on-board SEGGER J-Link OB, buttons, LEDs, and antenna. Not intended for breadboard; use jumper wires or a shield. Module-only designs (e.g. nRF52840 MDBT50Q) are much smaller (~**21 × 14 mm** class modules).
 
 ---
 

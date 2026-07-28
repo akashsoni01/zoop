@@ -8,12 +8,25 @@
 
 | Spec | Typical DevKitM-1 |
 |------|-------------------|
+| **PCB size** | **~48.3 × 20.3 mm** (L × W) — compact MINI module board |
 | **CPU** | RISC-V 32-bit @ 160 MHz |
 | **Flash** | 4 MB |
 | **SRAM** | 400 KB |
 | **Wi-Fi** | 802.11 b/g/n |
 | **Bluetooth** | BLE 5.0 |
 | **USB** | USB Serial/JTAG (built-in) |
+| **Headers** | Dual 2.54 mm pitch |
+
+### Board dimensions
+
+```
+           ~48.3 mm
+    ┌────────────────────┐
+    │ USB │ MINI-1 │ ant │  ~20.3 mm
+    └────────────────────┘
+```
+
+Smaller than DevKitC — fits tighter breadboard / wearable prototypes. Official: Espressif [ESP32-C3-DevKitM-1 Dimensions](https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/hw-reference/esp32c3/user-guide-devkitm-1.html).
 
 ---
 

@@ -6,6 +6,8 @@ Per-file reference for the Zoop workspace. Each page documents path, purpose, ar
 
 **Learn Embedded Rust:** [learning/README.md](learning/README.md) — beginner→advanced curriculum (peripherals, sensors, protocols, boards, projects).
 
+**Learn Embedded Swift:** [swift/README.md](swift/README.md) — parallel Swift / Embedded Swift curriculum (same topics, SwiftPM + concurrency).
+
 **See / review the E-Ink UI:** [core/ui-capabilities.md](core/ui-capabilities.md) — **UPI payment screens**, QR on e-Ink, and `zoop-ui-preview`.
 
 ```bash
@@ -40,7 +42,7 @@ Full diagrams: [architecture.md](architecture.md).
 ## How to navigate
 
 1. Start here for the table of contents.
-2. **New to Embedded Rust?** Start at [learning/](learning/README.md).
+2. **New to Embedded Rust?** Start at [learning/](learning/README.md). Prefer Swift? Start at [swift/](swift/README.md).
 3. Open a crate overview: [core/](core/README.md) or [firmware/](firmware/README.md).
 4. **UI:** [core/ui-capabilities.md](core/ui-capabilities.md) → [core/display/](core/display/README.md).
 5. Open a module README (e.g. [core/display/](core/display/README.md)), then a file page (e.g. [core/display/ui.md](core/display/ui.md)).

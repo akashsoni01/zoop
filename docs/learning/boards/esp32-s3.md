@@ -8,12 +8,26 @@
 
 | Spec | Typical DevKitC-1 (N8R8) |
 |------|--------------------------|
+| **PCB size** | **62.74 × 25.40 mm** (L × W); ~1.6 mm thick FR4 |
 | **CPU** | Dual-core Xtensa LX7 up to 240 MHz |
 | **Flash** | 8 MB external (QIO) |
 | **SRAM** | 512 KB internal + 8 MB PSRAM (octal) |
 | **Wi-Fi** | 802.11 b/g/n 2.4 GHz |
 | **Bluetooth** | BLE 5.0 |
 | **USB** | USB-OTG (GPIO19/20) + USB Serial/JTAG |
+| **Headers** | Dual 2.54 mm pitch; breadboard-friendly width |
+
+### Board dimensions
+
+```
+                62.74 mm
+    ┌──────────────────────────────┐
+    │ USB-C │ WROOM-1 │ PCB ant.   │  25.40 mm
+    └──────────────────────────────┘
+         dual 2.54 mm pin headers
+```
+
+Official drawing: Espressif [ESP32-S3-DevKitC-1 Dimensions (PDF/DXF)](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html). Module alone (WROOM-1) is smaller (~**25.5 × 18.0 mm**); keep antenna clearance free of metal in enclosures.
 
 ---
 

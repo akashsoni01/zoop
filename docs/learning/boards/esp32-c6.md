@@ -6,14 +6,20 @@
 
 ## Overview
 
-| Spec | Typical |
-|------|---------|
+| Spec | Typical DevKitC-1 |
+|------|-------------------|
+| **PCB size** | **~51.6 × 25.4 mm** (L × W; confirm revision DXF) |
 | **CPU** | RISC-V (HP + LP cores) @ 160 MHz |
 | **Flash** | 4–8 MB |
 | **SRAM** | 512 KB |
 | **Wi-Fi** | 2.4 GHz 802.11ax |
 | **802.15.4** | Thread / Zigbee / Matter |
 | **Bluetooth** | BLE 5 |
+| **Headers** | Dual 2.54 mm pitch |
+
+### Board dimensions
+
+ESP32-C6-DevKitC-1 uses the slim DevKitC-style outline (~25 mm wide). Download the Espressif dimensions PDF/DXF for your board revision before designing an enclosure (antenna keep-out still applies).
 
 ---
 

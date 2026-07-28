@@ -6,15 +6,28 @@
 
 ## Overview
 
-| Spec | Nucleo-F411RE |
-|------|---------------|
+| Spec | Nucleo-F411RE (Nucleo-64) |
+|------|---------------------------|
+| **PCB size** | **82.5 × 70 mm** (Nucleo-64 form factor) |
 | **CPU** | ARM Cortex-M4F @ 100 MHz |
 | **Flash** | 512 KB |
 | **SRAM** | 128 KB |
 | **FPU** | Single precision |
 | **Debug** | ST-Link built-in (SWD) |
+| **Headers** | Arduino Uno R3 + ST Morpho |
 
-STM32 spans **M0+ to M7** — this guide patterns apply broadly; verify your exact reference manual.
+### Board dimensions
+
+```
+              82.5 mm
+    ┌────────────────────────────┐
+    │ ST-Link │ MCU / Arduino   │  70 mm
+    └────────────────────────────┘
+```
+
+**Nucleo-64** boards share this outline (UM1724). **Nucleo-32** is smaller (~50 × 40 mm class); **Nucleo-144** is larger. Morpho headers sit outside the Arduino footprint — leave clearance in enclosures.
+
+STM32 spans **M0+ to M7** — this guide’s patterns apply broadly; verify your exact reference manual.
 
 ---
 

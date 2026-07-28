@@ -6,16 +6,20 @@ Dual-core **Xtensa LX6** SoC — mature ecosystem but superseded by **ESP32-S3**
 
 ## Overview
 
-| Spec | Typical module |
-|------|----------------|
+| Spec | Typical module / DevKitC |
+|------|--------------------------|
+| **PCB size (DevKitC-V4)** | **~54.9 × 27.9 mm** (L × W) |
 | **CPU** | Dual Xtensa LX6 @ 240 MHz |
 | **Flash** | 4–16 MB |
 | **SRAM** | 520 KB |
 | **Wi-Fi** | 802.11 b/g/n |
 | **Bluetooth** | Classic + BLE |
 | **USB** | External UART chip (CP2102/CH340) — no native USB device |
+| **Headers** | Dual 2.54 mm pitch |
 
-See [esp32-s3.md](./esp32-s3.md) for modern equivalent with USB-JTAG.
+### Board dimensions
+
+Classic **ESP32-DevKitC** is slightly wider than the S3 DevKitC-1 (~28 mm vs 25.4 mm). WROOM-32 module alone is typically **~25.5 × 18 mm**. Clone boards vary — measure before designing a case. See [esp32-s3.md](./esp32-s3.md) for the modern USB-JTAG DevKit dimensions.
 
 ---
 

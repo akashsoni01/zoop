@@ -6,14 +6,20 @@
 
 ## Overview
 
-| Spec | Typical |
-|------|---------|
+| Spec | Typical DevKitM-1 |
+|------|-------------------|
+| **PCB size** | **~48 × 20 mm** (L × W; mini DevKitM form factor) |
 | **CPU** | RISC-V @ 96 MHz |
 | **Flash** | 4 MB |
 | **SRAM** | 320 KB |
 | **Wi-Fi** | None |
 | **802.15.4** | Yes — Thread/Zigbee |
 | **Bluetooth** | BLE 5 |
+| **Headers** | Dual 2.54 mm pitch |
+
+### Board dimensions
+
+Similar compact footprint to [ESP32-C3-DevKitM-1](./esp32-c3.md). Verify Espressif’s DXF for your H2 DevKit revision — RF layout and antenna keep-out dominate enclosure rules more than raw mm.
 
 ---
 

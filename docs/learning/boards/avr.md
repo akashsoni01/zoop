@@ -8,11 +8,25 @@
 
 | Spec | Arduino Uno (ATmega328P) |
 |------|--------------------------|
+| **PCB size (Uno R3)** | **68.6 × 53.4 mm** |
+| **PCB size (Nano)** | **~45 × 18 mm** |
 | **CPU** | 8-bit AVR @ 16 MHz |
 | **Flash** | 32 KB |
 | **SRAM** | 2 KB |
 | **EEPROM** | 1 KB |
 | **Debug** | No native SWD — ISP/UPDI only |
+| **Headers** | Arduino R3 / Nano 2.54 mm |
+
+### Board dimensions
+
+```
+           68.6 mm (Uno R3)
+    ┌────────────────────────┐
+    │ USB │ ATmega328P       │  53.4 mm
+    └────────────────────────┘
+```
+
+Uno R3 is the shield ecosystem standard. Nano / Pro Mini are better for breadboards and small cases.
 
 ---
 

@@ -6,13 +6,19 @@ Single-core **Xtensa LX7** with **native USB OTG** — no Wi-Fi/BLE. Good for US
 
 ## Overview
 
-| Spec | Typical |
-|------|---------|
+| Spec | Typical DevKitC-1 |
+|------|-------------------|
+| **PCB size** | **~54.4 × 25.4 mm** (L × W; slim DevKitC family) |
 | **CPU** | Xtensa LX7 @ 240 MHz |
 | **Flash** | 4 MB+ |
 | **SRAM** | 320 KB |
 | **Wi-Fi / BLE** | None |
 | **USB** | Full-speed OTG |
+| **Headers** | Dual 2.54 mm pitch |
+
+### Board dimensions
+
+ESP32-S2-DevKitC / Saola-class boards follow the slim Espressif DevKit outline (~25 mm wide). Confirm the DXF for your exact SKU before enclosure design.
 
 ---
 
